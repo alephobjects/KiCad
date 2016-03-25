@@ -23,6 +23,15 @@ set( CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules )
 # reports.
 #
 
+
+set(PACKAGE_NAME "KiCAD")
+set(PACKAGE_VERSION_MAJOR "4")
+set(PACKAGE_VERSION_MINOR "0")
+set(PACKAGE_VERSION_PATCH "0")
+set(PACKAGE_VERSION "${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}.${PACKAGE_VERSION_PATCH}")
+set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
+
+
 # The desire is to migrate designs *away from* case independence, and to create designs which use
 # literally (case specific) interpreted component names.  But for backwards compatibility,
 # you may turn OFF this option if you really must.  (Remember that with KiCad using text

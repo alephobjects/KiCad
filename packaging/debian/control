@@ -1,0 +1,22 @@
+Package: kicad
+Version: [BUILD_VERSION]
+Architecture: [ARCH]
+Maintainer: Aleph Objects, Inc. <info@alephobjects.com>
+Installed-Size: 100000
+Depends:libc6 (>= 2.14), libgcc1 (>= 1:4.1.1), libgl1-mesa-glx | libgl1, libglu1-mesa | libglu1, libice6 (>= 1:1.0.0), libsm6, libstdc++6 (>= 4.9), libwxbase3.0-0 (>= 3.0.2), libwxgtk3.0-0 (>= 3.0.2), libx11-6, libxext6
+Conflicts:  kicad-common
+Section: electronics
+Priority: optional
+Homepage: http://www.kicad-pcb.org
+Description: Electronic schematic and PCB design software
+ Kicad is a suite of programs for the creation of printed circuit boards.
+ It includes a schematic editor, a PCB layout tool, support tools and a
+ 3D viewer to display a finished & fully populated PCBs.
+ .
+ Kicad is made up of 5 main components:
+ .
+  * kicad - project manager
+  * eeschema - schematic editor
+  * pcbnew - PCB editor
+  * gerbview - GERBER viewer
+  * cvpcb - footprint selector for components
