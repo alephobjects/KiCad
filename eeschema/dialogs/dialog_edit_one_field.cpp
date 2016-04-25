@@ -131,6 +131,11 @@ void DIALOG_EDIT_ONE_FIELD::init()
         m_PowerComponentValues->Show( true );
         m_TextValue->Enable( false );
     }
+    else
+    {
+        m_PowerComponentValues->Show( false );
+        m_TextValue->Enable( true );
+    }
 
     m_sdbSizerButtonsOK->SetDefault();
     GetSizer()->SetSizeHints( this );
@@ -246,4 +251,25 @@ DIALOG_SCH_EDIT_ONE_FIELD::DIALOG_SCH_EDIT_ONE_FIELD( SCH_BASE_FRAME* aParent,
     m_isPower = part->IsPower();
 
     init();
+}
+
+
+void DIALOG_SCH_EDIT_ONE_FIELD::UpdateField( SCH_FIELD* aField, SCH_SHEET_PATH* aSheetPath )
+{
+    wxASSERT( aField != NULL || aField->Type() != SCH_FIELD_T );
+
+    if( aField->GetId() == REFERENCE )
+    {
+        wxASSERT( aSheetPath != NULL );
+
+        SCH_COMPONENT* component = dynamic_cast< SCH_COMPONENT* >( aField->GetParent() );
+
+        wxASSERT( component != NULL );
+
+        if( component != NULL )
+            component->SetRef( aSheetPath, m_text );
+    }
+
+    aField->SetText( m_text );
+    updateText( aField );
 }

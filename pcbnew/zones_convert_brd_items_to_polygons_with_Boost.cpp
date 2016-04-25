@@ -4,8 +4,8 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2012 Jean-Pierre Charras, jean-pierre.charras@ujf-grenoble.fr
- * Copyright (C) 1992-2012 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2016 Jean-Pierre Charras, jp.charras at wanadoo.fr
+ * Copyright (C) 1992-2016 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -197,12 +197,14 @@ void ZONE_CONTAINER::buildFeatureHoleList( BOARD* aPcb, SHAPE_POLY_SET& aFeature
                 continue;
             }
 
+            // Pads are removed from zone if the setup is PAD_ZONE_CONN_NONE
             if( GetPadConnection( pad ) == PAD_ZONE_CONN_NONE )
             {
                 int gap = zone_clearance;
                 int thermalGap = GetThermalReliefGap( pad );
                 gap = std::max( gap, thermalGap );
                 item_boundingbox = pad->GetBoundingBox();
+                item_boundingbox.Inflate( gap );
 
                 if( item_boundingbox.Intersects( zone_boundingbox ) )
                 {
@@ -457,13 +459,13 @@ void ZONE_CONTAINER::AddClearanceAreasPolygonsToPolysList_NG( BOARD* aPcb )
     if (g_DumpZonesWhenFilling)
         dumper->Write( &solidAreas, "solid-areas-minus-holes" );
 
-    SHAPE_POLY_SET fractured = solidAreas;
-    fractured.Fracture( POLY_CALC_MODE );
+    SHAPE_POLY_SET areas_fractured = solidAreas;
+    areas_fractured.Fracture( POLY_CALC_MODE );
 
     if (g_DumpZonesWhenFilling)
-        dumper->Write( &fractured, "fractured" );
+        dumper->Write( &areas_fractured, "areas_fractured" );
 
-    m_FilledPolysList = fractured;
+    m_FilledPolysList = areas_fractured;
 
     // Remove insulated islands:
     if( GetNetCode() > 0 )
@@ -488,13 +490,13 @@ void ZONE_CONTAINER::AddClearanceAreasPolygonsToPolysList_NG( BOARD* aPcb )
             dumper->Write( &thermalHoles, "thermal-holes" );
 
         // put these areas in m_FilledPolysList
-        SHAPE_POLY_SET fractured = solidAreas;
-        fractured.Fracture( POLY_CALC_MODE );
+        SHAPE_POLY_SET th_fractured = solidAreas;
+        th_fractured.Fracture( POLY_CALC_MODE );
 
         if( g_DumpZonesWhenFilling )
-            dumper->Write ( &fractured, "fractured" );
+            dumper->Write ( &th_fractured, "th_fractured" );
 
-        m_FilledPolysList = fractured;
+        m_FilledPolysList = th_fractured;
 
         if( GetNetCode() > 0 )
             TestForCopperIslandAndRemoveInsulatedIslands( aPcb );

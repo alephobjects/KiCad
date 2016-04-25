@@ -133,11 +133,7 @@ public:
      */
     int GetThickness() const               { return m_Thickness; };
 
-    void SetOrientation( double aOrientation )
-    {
-        NORMALIZE_ANGLE_POS( aOrientation );
-        m_Orient = aOrientation;
-    }
+    void SetOrientation( double aOrientation );
     double GetOrientation() const          { return m_Orient; }
 
     void SetItalic( bool isItalic )        { m_Italic = isItalic; }
