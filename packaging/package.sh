@@ -107,7 +107,7 @@ if [[ "$BUILD_TARGET" = "debian_i386" || "$BUILD_TARGET" = "debian_amd64" ]]; th
 	cp debian/postrm ${TARGET_DIR}/DEBIAN/postrm
 	cp debian/prerm ${TARGET_DIR}/DEBIAN/prerm
 # Now that the directory structure is ready, let's build a package
-#	rm -Rf ${SCRIPT_DIR}/freecad_*.deb
+	rm -Rf ${SCRIPT_DIR}/kicad_*.deb
 # Let's delete the old builds:
 	fakeroot sh -ec "
 		chown root:root ${TARGET_DIR} -R
