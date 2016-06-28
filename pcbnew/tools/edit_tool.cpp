@@ -756,7 +756,7 @@ int EDIT_TOOL::Duplicate( const TOOL_EVENT& aEvent )
             // so zones are not duplicated
             if( item->Type() != PCB_ZONE_AREA_T )
 #endif
-            new_item = editFrame->GetBoard()->DuplicateAndAddItem( item, increment );
+            new_item = editFrame->GetBoard()->DuplicateAndAddItem( item );
         }
 
         if( new_item )
@@ -876,7 +876,8 @@ int EDIT_TOOL::CreateArray( const TOOL_EVENT& aEvent )
     const SELECTION& selection = selTool->GetSelection();
 
     // pick up items under the cursor if needed
-    hoverSelection( selection );
+    if( !hoverSelection( selection ) )
+        return 0;
 
     // we have a selection to work on now, so start the tool process
 

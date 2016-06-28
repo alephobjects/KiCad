@@ -98,9 +98,9 @@ bool X3D_MODEL_PARSER::Load( const wxString& aFilename )
         childs.push_back( m_model );
 
         wxXmlNode* node = *node_it;
-        wxXmlAttribute* prop = node->GetAttributes();
 
-        wxLogTrace( traceX3DParser, wxT( "Transform: %s %s" ), prop->GetName(), prop->GetValue() );
+        wxLogTrace( traceX3DParser, wxT( "Transform: %s %s" ),
+                    node->GetAttributes()->GetName(), node->GetAttributes()->GetValue() );
 
         readTransform( node );
 
@@ -145,9 +145,7 @@ void X3D_MODEL_PARSER::GetNodeProperties( wxXmlNode* aNode, PROPERTY_MAP& aProps
 {
     wxXmlAttribute* prop;
 
-    for( prop = aNode->GetAttributes();
-         prop != NULL;
-         prop = prop->GetNext() )
+    for( prop = aNode->GetAttributes(); prop != NULL; prop = prop->GetNext() )
     {
         aProps[ prop->GetName() ] = prop->GetValue();
     }
@@ -163,8 +161,7 @@ void X3D_MODEL_PARSER::readTransform( wxXmlNode* aTransformNode )
     GetChildsByName( aTransformNode, wxT( "Material" ), childnodes );
 
     for( NODE_LIST::iterator node = childnodes.begin();
-         node != childnodes.end();
-         node++ )
+         node != childnodes.end(); node++ )
     {
         readMaterial( *node );
     }
@@ -180,8 +177,7 @@ void X3D_MODEL_PARSER::readTransform( wxXmlNode* aTransformNode )
     GetChildsByName( aTransformNode, wxT( "IndexedFaceSet" ), childnodes );
 
     for( NODE_LIST::iterator node = childnodes.begin();
-         node != childnodes.end();
-         node++ )
+         node != childnodes.end(); node++ )
     {
         readIndexedFaceSet( *node, properties );
     }
@@ -437,13 +433,13 @@ void X3D_MODEL_PARSER::readIndexedFaceSet( wxXmlNode* aFaceNode,
 
     // Save points to vector as doubles
     wxStringTokenizer point_tokens( coordinate_properties[ wxT( "point" ) ] );
-    double point = 0.0;
+    double dpoint = 0.0;
 
     while( point_tokens.HasMoreTokens() )
     {
-        if( point_tokens.GetNextToken().ToDouble( &point ) )
+        if( point_tokens.GetNextToken().ToDouble( &dpoint ) )
         {
-            points.push_back( point );
+            points.push_back( dpoint );
         }
         else
         {
@@ -466,24 +462,24 @@ void X3D_MODEL_PARSER::readIndexedFaceSet( wxXmlNode* aFaceNode,
     for( unsigned id = 0; id < points.size() / 3; id++ )
     {
         int triplet_indx = id * 3;
-        S3D_VERTEX point( points[ triplet_indx ],
+        S3D_VERTEX vpoint( points[ triplet_indx ],
                 points[ triplet_indx + 1 ],
                 points[ triplet_indx + 2 ] );
 
-        point.x *= scale.x;
-        point.y *= scale.y;
-        point.z *= scale.z;
+        vpoint.x *= scale.x;
+        vpoint.y *= scale.y;
+        vpoint.z *= scale.z;
 
-        rotate( point, rotation, angle );
+        rotate( vpoint, rotation, angle );
 
-        point.x += translation.x;
-        point.y += translation.y;
-        point.z += translation.z;
+        vpoint.x += translation.x;
+        vpoint.y += translation.y;
+        vpoint.z += translation.z;
 
-        m_model->m_Point.push_back( point );
+        m_model->m_Point.push_back( vpoint );
 
         // VRML
-        vrml_pointlist.Append( wxString::Format( wxT( "%f %f %f\n" ), point.x, point.y, point.z ) );
+        vrml_pointlist.Append( wxString::Format( wxT( "%f %f %f\n" ), vpoint.x, vpoint.y, vpoint.z ) );
     }
 
     vrml_points.push_back( vrml_pointlist );

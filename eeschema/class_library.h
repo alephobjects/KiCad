@@ -37,6 +37,8 @@
 
 #include <project.h>
 
+#include <map>
+
 class LINE_READER;
 class OUTPUTFORMATTER;
 
@@ -169,7 +171,7 @@ struct AliasMapSort
 {
     bool operator() ( const wxString& aItem1, const wxString& aItem2 ) const
     {
-        return Cmp_KEEPCASE( aItem1, aItem2 ) < 0;
+        return aItem1 < aItem2;
     }
 };
 

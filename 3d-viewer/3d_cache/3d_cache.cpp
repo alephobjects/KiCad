@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2015 Cirilo Bernardo <cirilo.bernardo@gmail.com>
+ * Copyright (C) 2015-2016 Cirilo Bernardo <cirilo.bernardo@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -32,8 +32,6 @@
 #include <wx/datetime.h>
 #include <wx/filename.h>
 #include <wx/log.h>
-#include <wx/thread.h>
-#include <wx/utils.h>
 #include <wx/stdpaths.h>
 
 #include <boost/uuid/sha1.hpp>
@@ -41,15 +39,16 @@
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 
+#include "common.h"
 #include "3d_cache.h"
 #include "3d_info.h"
+#include "common.h"
 #include "sg/scenegraph.h"
 #include "3d_filename_resolver.h"
 #include "3d_plugin_manager.h"
 #include "plugins/3dapi/ifsg_api.h"
 
 
-#define CACHE_CONFIG_NAME wxT( "cache.cfg" )
 #define MASK_3D_CACHE "3D_CACHE"
 
 static wxCriticalSection lock3D_cache;
@@ -225,19 +224,23 @@ SCENEGRAPH* S3D_CACHE::load( const wxString& aModelFile, S3D_CACHE_ENTRY** aCach
     if( mi != m_CacheMap.end() )
     {
         wxFileName fname( full3Dpath );
-        wxDateTime fmdate = fname.GetModificationTime();
         bool reload = false;
 
-        if( fmdate != mi->second->modTime )
+        if( fname.FileExists() )
         {
-            unsigned char hashSum[20];
-            getSHA1( full3Dpath, hashSum );
-            mi->second->modTime = fmdate;
+            wxDateTime fmdate = fname.GetModificationTime();
 
-            if( !isSHA1Same( hashSum, mi->second->sha1sum ) )
+            if( fmdate != mi->second->modTime )
             {
-                mi->second->SetSHA1( hashSum );
-                reload = true;
+                unsigned char hashSum[20];
+                getSHA1( full3Dpath, hashSum );
+                mi->second->modTime = fmdate;
+
+                if( !isSHA1Same( hashSum, mi->second->sha1sum ) )
+                {
+                    mi->second->SetSHA1( hashSum );
+                    reload = true;
+                }
             }
         }
 
@@ -538,7 +541,13 @@ bool S3D_CACHE::Set3DConfigDir( const wxString& aConfigDir )
     if( !m_ConfigDir.empty() )
         return false;
 
-    wxFileName cfgdir( aConfigDir, wxT( "" ) );
+    wxFileName cfgdir;
+
+    if( aConfigDir.StartsWith( "${" ) || aConfigDir.StartsWith( "$(" ) )
+        cfgdir.Assign( ExpandEnvVarSubstitutions( aConfigDir ), "" );
+    else
+        cfgdir.Assign( aConfigDir, "" );
+
     cfgdir.Normalize();
 
     if( !cfgdir.DirExists() )
@@ -576,7 +585,32 @@ bool S3D_CACHE::Set3DConfigDir( const wxString& aConfigDir )
         #endif
     }
 
-    cfgdir.AppendDir( wxT( "cache" ) );
+    // 3D cache data must go to a user's cache directory;
+    // unfortunately wxWidgets doesn't seem to provide
+    // functions to retrieve such a directory.
+    //
+    // 1. OSX: ~/Library/Caches/kicad/3d/
+    // 2. Linux: ${XDG_CACHE_HOME}/kicad/3d ~/.cache/kicad/3d/
+    // 3. MSWin: AppData\Local\kicad\3d
+    wxString cacheDir;
+
+    #if defined(_WIN32)
+    wxStandardPaths::Get().UseAppInfo( wxStandardPaths::AppInfo_None );
+    cacheDir = wxStandardPaths::Get().GetUserLocalDataDir();
+    cacheDir.append( "\\kicad\\3d" );
+    #elif defined(__APPLE)
+    cacheDir = "${HOME}/Library/Caches/kicad/3d";
+    #else   // assume Linux
+    cacheDir = ExpandEnvVarSubstitutions( "${XDG_CACHE_HOME}" );
+
+    if( cacheDir.empty() || cacheDir == "${XDG_CACHE_HOME}" )
+        cacheDir = "${HOME}/.cache";
+
+    cacheDir.append( "/kicad/3d" );
+    #endif
+
+    cacheDir = ExpandEnvVarSubstitutions( cacheDir );
+    cfgdir.Assign( cacheDir, "" );
 
     if( !cfgdir.DirExists() )
     {
@@ -620,9 +654,9 @@ wxString S3D_CACHE::Get3DConfigDir( bool createDefault )
     cfgpath.AssignDir( wxStandardPaths::Get().GetUserConfigDir() );
 
 #if !defined( __WINDOWS__ ) && !defined( __WXMAC__ )
-    wxString envstr;
+    wxString envstr = ExpandEnvVarSubstitutions( "${XDG_CONFIG_HOME}" );
 
-    if( !wxGetEnv( wxT( "XDG_CONFIG_HOME" ), &envstr ) || envstr.IsEmpty() )
+    if( envstr.IsEmpty() || envstr == "${XDG_CONFIG_HOME}" )
     {
         // XDG_CONFIG_HOME is not set, so use the fallback
         cfgpath.AppendDir( wxT( ".config" ) );

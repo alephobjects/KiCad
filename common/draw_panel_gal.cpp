@@ -64,7 +64,13 @@ EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( wxWindow* aParentWindow, wxWindowID aWin
 
     SwitchBackend( aGalType );
     SetBackgroundStyle( wxBG_STYLE_CUSTOM );
+
+// Scrollbars broken in GAL on OSX
+#ifdef __WXMAC__
+    ShowScrollbars( wxSHOW_SB_NEVER, wxSHOW_SB_NEVER );
+#else
     ShowScrollbars( wxSHOW_SB_ALWAYS, wxSHOW_SB_ALWAYS );
+#endif
     EnableScrolling( false, false );    // otherwise Zoom Auto disables GAL canvas
 
     m_painter = new KIGFX::PCB_PAINTER( m_gal );
@@ -120,7 +126,10 @@ EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( wxWindow* aParentWindow, wxWindowID aWin
 
 EDA_DRAW_PANEL_GAL::~EDA_DRAW_PANEL_GAL()
 {
+    StopDrawing();
     SaveGalSettings();
+
+    assert( !m_drawing );
 
     delete m_painter;
     delete m_viewControls;
@@ -147,6 +156,9 @@ void EDA_DRAW_PANEL_GAL::SetFocus()
 
 void EDA_DRAW_PANEL_GAL::onPaint( wxPaintEvent& WXUNUSED( aEvent ) )
 {
+    // This is required even though dc is not used otherwise.
+    wxPaintDC dc(this);
+
     m_pendingRefresh = false;
 
     if( m_drawing )
@@ -160,7 +172,11 @@ void EDA_DRAW_PANEL_GAL::onPaint( wxPaintEvent& WXUNUSED( aEvent ) )
     m_drawing = true;
     KIGFX::PCB_RENDER_SETTINGS* settings = static_cast<KIGFX::PCB_RENDER_SETTINGS*>( m_painter->GetSettings() );
 
+// Scrollbars broken in GAL on OSX
+#ifndef __WXMAC__
     m_viewControls->UpdateScrollbars();
+#endif
+
     m_view->UpdateItems();
 
     m_gal->BeginDrawing();
@@ -275,7 +291,6 @@ void EDA_DRAW_PANEL_GAL::StopDrawing()
     m_drawingEnabled = false;
     Disconnect( wxEVT_PAINT, wxPaintEventHandler( EDA_DRAW_PANEL_GAL::onPaint ), NULL, this );
     m_pendingRefresh = false;
-    m_drawing = true;
     m_refreshTimer.Stop();
 }
 
@@ -469,7 +484,7 @@ void EDA_DRAW_PANEL_GAL::onRefreshTimer( wxTimerEvent& aEvent )
 
 void EDA_DRAW_PANEL_GAL::onShowTimer( wxTimerEvent& aEvent )
 {
-    if( IsShownOnScreen() )
+    if( m_gal && m_gal->IsVisible() )
     {
         m_onShowTimer.Stop();
         OnShow();

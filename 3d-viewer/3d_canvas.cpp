@@ -48,6 +48,7 @@
 #include <info3d_visu.h>
 #include <trackball.h>
 #include <3d_viewer_id.h>
+#include <gl_context_mgr.h>
 
 #include <textures/text_silk.h>
 #include <textures/text_pcb.h>
@@ -108,7 +109,7 @@ EDA_3D_CANVAS::EDA_3D_CANVAS( EDA_3D_FRAME* parent, int* attribList ) :
         m_glLists[ii] = 0;
 
     // Explicitly create a new rendering context instance for this canvas.
-    m_glRC = new wxGLContext( this );
+    m_glRC = GL_CONTEXT_MANAGER::Get().CreateCtx( this );
 
     DisplayStatus();
 }
@@ -116,21 +117,17 @@ EDA_3D_CANVAS::EDA_3D_CANVAS( EDA_3D_FRAME* parent, int* attribList ) :
 
 EDA_3D_CANVAS::~EDA_3D_CANVAS()
 {
-#ifdef __LINUX__
-    if( IsShownOnScreen() )
-        SetCurrent( *m_glRC );
-#else
-    SetCurrent( *m_glRC );
-#endif
+    GL_CONTEXT_MANAGER::Get().LockCtx( m_glRC, this );
 
     ClearLists();
     m_init = false;
-    delete m_glRC;
 
     // Free the list of parsers list
     for( unsigned int i = 0; i < m_model_parsers_list.size(); i++ )
         delete m_model_parsers_list[i];
 
+    GL_CONTEXT_MANAGER::Get().UnlockCtx( m_glRC );
+    GL_CONTEXT_MANAGER::Get().DestroyCtx( m_glRC );
 }
 
 
@@ -699,7 +696,7 @@ void EDA_3D_CANVAS::TakeScreenshot( wxCommandEvent& event )
 
     unsigned char*       pixelbuffer = (unsigned char*) malloc( viewport.x * viewport.y * 3 );
     unsigned char*       alphabuffer = (unsigned char*) malloc( viewport.x * viewport.y );
-    wxImage image( viewport.x, viewport.y );
+    wxImage image_3d( viewport.x, viewport.y );
 
     glPixelStorei( GL_PACK_ALIGNMENT, 1 );
     glReadBuffer( GL_BACK_LEFT );
@@ -710,10 +707,10 @@ void EDA_3D_CANVAS::TakeScreenshot( wxCommandEvent& event )
                   viewport.x, viewport.y,
                   GL_ALPHA, GL_UNSIGNED_BYTE, alphabuffer );
 
-    image.SetData( pixelbuffer );
-    image.SetAlpha( alphabuffer );
-    image = image.Mirror( false );
-    wxBitmap bitmap( image );
+    image_3d.SetData( pixelbuffer );
+    image_3d.SetAlpha( alphabuffer );
+    image_3d = image_3d.Mirror( false );
+    wxBitmap bitmap( image_3d );
 
     if( event.GetId() == ID_TOOL_SCREENCOPY_TOCLIBBOARD )
     {

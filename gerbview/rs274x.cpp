@@ -1,8 +1,8 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2007-2014 Jean-Pierre Charras  jp.charras at wanadoo.fr
- * Copyright (C) 1992-2014 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2007-2016 Jean-Pierre Charras  jp.charras at wanadoo.fr
+ * Copyright (C) 1992-2016 KiCad Developers, see AUTHOR.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -32,12 +32,12 @@
 #include <base_units.h>
 
 #include <gerbview.h>
-#include <class_GERBER.h>
+#include <class_gerber_file_image.h>
 #include <class_X2_gerber_attributes.h>
 
 extern int ReadInt( char*& text, bool aSkipSeparator = true );
 extern double ReadDouble( char*& text, bool aSkipSeparator = true );
-extern bool GetEndOfBlock( char buff[GERBER_BUFZ], char*& text, FILE* gerber_file );
+extern bool GetEndOfBlock( char* buff, char*& text, FILE* gerber_file );
 
 
 #define CODE( x, y ) ( ( (x) << 8 ) + (y) )
@@ -128,7 +128,7 @@ static int ReadXCommand( char*& text )
 }
 
 
-bool GERBER_IMAGE::ReadRS274XCommand( char buff[GERBER_BUFZ], char*& text )
+bool GERBER_FILE_IMAGE::ReadRS274XCommand( char* buff, char*& text )
 {
     bool ok = true;
     int  code_command;
@@ -181,9 +181,7 @@ exit:
 }
 
 
-bool GERBER_IMAGE::ExecuteRS274XCommand( int       command,
-                                   char buff[GERBER_BUFZ],
-                                   char*&    text )
+bool GERBER_FILE_IMAGE::ExecuteRS274XCommand( int command, char* buff, char*& text )
 {
     int      code;
     int      seq_len;    // not used, just provided
@@ -298,14 +296,14 @@ bool GERBER_IMAGE::ExecuteRS274XCommand( int       command,
             default:
                 msg.Printf( wxT( "Unknown id (%c) in FS command" ),
                            *text );
-                ReportMessage( msg );
+                AddMessageToList( msg );
                 GetEndOfBlock( buff, text, m_Current_File );
                 ok = false;
                 break;
             }
         }
         if( !x_fmt_known || !y_fmt_known )
-            ReportMessage( wxT( "RS274X: Format Statement (FS) without X or Y format" ) );
+            AddMessageToList( wxT( "RS274X: Format Statement (FS) without X or Y format" ) );
 
         break;
 
@@ -441,7 +439,7 @@ bool GERBER_IMAGE::ExecuteRS274XCommand( int       command,
         else if( strnicmp( text, "270*", 4 ) == 0 )
             m_ImageRotation = 270;
         else
-            ReportMessage( _( "RS274X: Command \"IR\" rotation value not allowed" ) );
+            AddMessageToList( _( "RS274X: Command \"IR\" rotation value not allowed" ) );
         break;
 
     case STEP_AND_REPEAT:   // command SR, like %SRX3Y2I5.0J2*%
@@ -533,7 +531,7 @@ bool GERBER_IMAGE::ExecuteRS274XCommand( int       command,
     case KNOCKOUT:
         m_Iterpolation = GERB_INTERPOL_LINEAR_1X;       // Start a new Gerber layer
         msg = _( "RS274X: Command KNOCKOUT ignored by GerbView" ) ;
-        ReportMessage( msg );
+        AddMessageToList( msg );
         break;
 
     case PLOTTER_FILM:  // Command PF <string>
@@ -544,7 +542,7 @@ bool GERBER_IMAGE::ExecuteRS274XCommand( int       command,
         {
            msg.Append( *text++ );
         }
-        ReportMessage( msg );
+        AddMessageToList( msg );
         break;
 
     case ROTATE:        // Layer rotation: command like %RO45*%
@@ -586,15 +584,16 @@ bool GERBER_IMAGE::ExecuteRS274XCommand( int       command,
 
         else
             GetLayerParams().m_LayerNegative = false;
-        DBG( printf( "%22s: LAYER_POLARITY m_LayerNegative=%s\n", __func__,
-                   GetLayerParams().m_LayerNegative ? "true" : "false" ); )
+
+//        DBG( printf( "%22s: LAYER_POLARITY m_LayerNegative=%s\n", __func__,
+//                   GetLayerParams().m_LayerNegative ? "true" : "false" ); )
         break;
 
     case INCLUDE_FILE:
         if( m_FilesPtr >= INCLUDE_FILES_CNT_MAX )
         {
             ok = false;
-            ReportMessage( _( "Too many include files!!" ) );
+            AddMessageToList( _( "Too many include files!!" ) );
             break;
         }
 
@@ -608,7 +607,7 @@ bool GERBER_IMAGE::ExecuteRS274XCommand( int       command,
         if( m_Current_File == 0 )
         {
             msg.Printf( wxT( "include file <%s> not found." ), line );
-            ReportMessage( msg );
+            AddMessageToList( msg );
             ok = false;
             m_Current_File = m_FilesList[m_FilesPtr];
             break;
@@ -801,13 +800,13 @@ bool GERBER_IMAGE::ExecuteRS274XCommand( int       command,
             {
                 msg.Printf( wxT( "RS274X: aperture macro %s not found\n" ),
                            TO_UTF8( am_lookup.name ) );
-                ReportMessage( msg );
+                AddMessageToList( msg );
                 ok = false;
                 break;
             }
 
             dcode->m_Shape = APT_MACRO;
-            dcode->SetMacro( (APERTURE_MACRO*) pam );
+            dcode->SetMacro( pam );
         }
         break;
 
@@ -824,7 +823,7 @@ bool GERBER_IMAGE::ExecuteRS274XCommand( int       command,
 }
 
 
-bool GetEndOfBlock( char buff[GERBER_BUFZ], char*& text, FILE* gerber_file )
+bool GetEndOfBlock( char* buff, char*& text, FILE* gerber_file )
 {
     for( ; ; )
     {
@@ -860,7 +859,7 @@ bool GetEndOfBlock( char buff[GERBER_BUFZ], char*& text, FILE* gerber_file )
  * @param aFile = the opened GERBER file to read
  * @return a pointer to the beginning of the next line or NULL if end of file
 */
-static char* GetNextLine(  char aBuff[GERBER_BUFZ], char* aText, FILE* aFile  )
+static char* GetNextLine(  char *aBuff, char* aText, FILE* aFile  )
 {
     for( ; ; )
     {
@@ -886,7 +885,7 @@ static char* GetNextLine(  char aBuff[GERBER_BUFZ], char* aText, FILE* aFile  )
 }
 
 
-bool GERBER_IMAGE::ReadApertureMacro( char buff[GERBER_BUFZ],
+bool GERBER_FILE_IMAGE::ReadApertureMacro( char *buff,
                                 char*&    text,
                                 FILE*     gerber_file )
 {
@@ -944,7 +943,7 @@ bool GERBER_IMAGE::ReadApertureMacro( char buff[GERBER_BUFZ],
         {
             msg.Printf( wxT( "RS274X: Aperture Macro \"%s\": ill. symbol, line: \"%s\"" ),
                         GetChars( am.name ), GetChars( FROM_UTF8( buff ) ) );
-            ReportMessage( msg );
+            AddMessageToList( msg );
             primitive_type = AMP_COMMENT;
         }
         else
@@ -997,7 +996,7 @@ bool GERBER_IMAGE::ReadApertureMacro( char buff[GERBER_BUFZ],
             // @todo, there needs to be a way of reporting the line number
             msg.Printf( wxT( "RS274X: Aperture Macro \"%s\": Invalid primitive id code %d, line: \"%s\"" ),
                         GetChars( am.name ), primitive_type,  GetChars( FROM_UTF8( buff ) ) );
-            ReportMessage( msg );
+            AddMessageToList( msg );
             return false;
         }
 
@@ -1024,7 +1023,7 @@ bool GERBER_IMAGE::ReadApertureMacro( char buff[GERBER_BUFZ],
             // maybe some day we can throw an exception and track a line number
             msg.Printf( wxT( "RS274X: read macro descr type %d: read %d parameters, insufficient parameters\n" ),
                         prim.primitive_id, ii );
-            ReportMessage( msg );
+            AddMessageToList( msg );
 
         }
         // there are more parameters to read if this is an AMP_OUTLINE

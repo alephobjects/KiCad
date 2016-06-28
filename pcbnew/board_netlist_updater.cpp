@@ -485,10 +485,9 @@ bool BOARD_NETLIST_UPDATER::deleteSinglePadNets()
 
     std::vector<D_PAD*> padlist = m_board->GetPads();
 
-    for( unsigned ii = 0; ii < padlist.size(); ii++ )
-        {
-            pad = padlist[ii];
-
+    for( unsigned kk = 0; kk < padlist.size(); kk++ )
+    {
+        pad = padlist[kk];
 
         if( pad->GetNetname().IsEmpty() )
                 continue;
@@ -678,7 +677,7 @@ bool BOARD_NETLIST_UPDATER::UpdateNetlist( NETLIST& aNetlist )
     if( m_deleteSinglePadNets )
         deleteSinglePadNets();
 
-  	if ( !m_isDryRun )
+    if ( !m_isDryRun )
     {
         m_frame->SaveCopyInUndoList( *m_undoList, UR_UNSPECIFIED, wxPoint(0, 0) );
         m_frame->OnModify();

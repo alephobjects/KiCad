@@ -24,6 +24,8 @@
 #include <geometry/shape_rect.h>
 #include <geometry/shape_convex.h>
 
+#include <cmath>
+
 #include "pns_line.h"
 #include "pns_diff_pair.h"
 #include "pns_node.h"
@@ -313,7 +315,7 @@ void LINE_RESTRICTIONS::Build( PNS_NODE* aWorld, PNS_LINE* aOriginLine, const SH
 
     for( int i = 0; i < n; i++ )
     {
-        const VECTOR2I &v = l.CPoint( i ), v_next;
+        const VECTOR2I &v = l.CPoint( i );
         RVERTEX r( false, 0xff );
 
         if( aRestrictedAreaEnable )
@@ -386,6 +388,7 @@ bool PNS_OPTIMIZER::checkColliding( PNS_ITEM* aItem, bool aUpdateCache )
 
     return static_cast<bool>( m_world->CheckColliding( aItem ) );
 
+#if 0
     // something is wrong with the cache, need to investigate.
     m_cache.Query( aItem->Shape(), m_world->GetMaxClearance(), v, false );
 
@@ -408,6 +411,7 @@ bool PNS_OPTIMIZER::checkColliding( PNS_ITEM* aItem, bool aUpdateCache )
     }
 
     return false;
+#endif
 }
 
 

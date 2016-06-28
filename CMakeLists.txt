@@ -252,10 +252,6 @@ if( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
 
 endif( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
 
-if( KICAD_KEEPCASE )
-    add_definitions( -DKICAD_KEEPCASE )
-endif()
-
 if( USE_WX_OVERLAY OR APPLE )
     add_definitions( -DUSE_WX_OVERLAY )
 endif()
@@ -494,7 +490,9 @@ find_package( GLM 0.9.5.1 REQUIRED )
 #
 # Find CURL library, required for github plugin
 #
-find_package( CURL REQUIRED )
+if( BUILD_GITHUB_PLUGIN )
+    find_package( CURL REQUIRED )
+endif()
 
 #
 # Find Cairo library, required
@@ -730,16 +728,9 @@ if( UNIX AND NOT APPLE )
 
     # Set paths
     set( UNIX_MIME_DIR resources/linux/mime )
-    set( UNIX_MIMELNK_FILES ${UNIX_MIME_DIR}/mimelnk )
     set( UNIX_MIME_FILES ${UNIX_MIME_DIR}/mime )
     set( UNIX_ICON_FILES ${UNIX_MIME_DIR}/icons )
     set( UNIX_APPLICATIONS_FILES ${UNIX_MIME_DIR}/applications )
-
-    # Install Mimelnk directory
-    install( DIRECTORY ${UNIX_MIMELNK_FILES}
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share
-        COMPONENT resources
-        )
 
     # Install Mime directory
     install( DIRECTORY ${UNIX_ICON_FILES}

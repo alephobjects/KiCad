@@ -8,7 +8,9 @@ add_dependencies( pnsrouter pcbcommon )
 
 if( KICAD_SCRIPTING OR KICAD_SCRIPTING_MODULES )
     file( MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/scripting )
-    find_package( SWIG REQUIRED )
+
+    # SWIG 3.0 or later require for C++11 support.
+    find_package( SWIG 3.0 REQUIRED )
     include( ${SWIG_USE_FILE} )
 
     # Infrequently needed headers go at end of search paths, append to INC_AFTER
@@ -293,6 +295,7 @@ set( PCBNEW_CLASS_SRCS
     tools/common_actions.cpp
     tools/grid_helper.cpp
     tools/picker_tool.cpp
+    tools/zoom_tool.cpp
     tools/tools_common.cpp
 
     tools/grid_menu.cpp
@@ -419,8 +422,8 @@ if( KICAD_SCRIPTING_MODULES )
         3d-viewer
         pcbcommon
         pnsrouter
-        common
         pcad2kicadpcb
+        common
         lib_dxf
         idf3
         polygon
@@ -534,6 +537,8 @@ add_subdirectory( pcad2kicadpcb_plugin )
 if( BUILD_GITHUB_PLUGIN )
     add_subdirectory( github )
     add_dependencies( github_plugin lib-dependencies )
+    # github_plugin depends on make_lexer outputs in common
+    add_dependencies( github_plugin pcbcommon )
 endif()
 
 
@@ -583,8 +588,8 @@ target_link_libraries( pcbnew_kiface
     3d-viewer
     pcbcommon
     pnsrouter
-    common
     pcad2kicadpcb
+    common
     polygon
     bitmaps
     gal
