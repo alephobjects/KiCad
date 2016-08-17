@@ -169,6 +169,7 @@ set( COMMON_DLG_SRCS
     )
 
 set( COMMON_WIDGET_SRCS
+    widgets/mathplot.cpp
     widgets/widget_hotkey_list.cpp
     )
 
@@ -241,6 +242,7 @@ set( COMMON_SRCS
     netlist_keywords.cpp
     prependpath.cpp
     project.cpp
+    properties.cpp
     ptree.cpp
     reporter.cpp
     richio.cpp
@@ -502,3 +504,4 @@ target_link_libraries( dsntest common ${wxWidgets_LIBRARIES} rt )
 
 add_dependencies( dsntest lib-dependencies )
 
+target_link_libraries( pcbcommon 3d-viewer )

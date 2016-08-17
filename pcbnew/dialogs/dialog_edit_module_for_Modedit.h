@@ -28,9 +28,9 @@
 // Include the wxFormBuider header base:
 #include <vector>
 #include <dialog_edit_module_for_Modedit_base.h>
-#include <3d_struct.h>
 
 class PANEL_PREV_3D;
+class MODULE;
 
 class DIALOG_MODULE_MODULE_EDITOR : public DIALOG_MODULE_MODULE_EDITOR_BASE
 {
@@ -40,10 +40,11 @@ private:
     MODULE*                     m_currentModule;
     TEXTE_MODULE*               m_referenceCopy;
     TEXTE_MODULE*               m_valueCopy;
-    std::vector <S3D_MASTER*>   m_shapes3D_list;
+    std::vector<S3D_INFO>       m_shapes3D_list;
     int                         m_lastSelected3DShapeIndex;
     static size_t               m_page; // remember the last open page during session
     PANEL_PREV_3D*              m_PreviewPane;
+    MODULE*                     m_currentModuleCopy;
 
 public:
 
@@ -54,8 +55,6 @@ public:
 private:
     void BrowseAndAdd3DShapeFile();
     void initModeditProperties();
-    void Transfert3DValuesToDisplay( S3D_MASTER * aStruct3DSource );
-    void TransfertDisplayTo3DValues( int aIndexSelection );
     void Edit3DShapeFileName();
 
     // virtual event functions
@@ -75,6 +74,15 @@ private:
     void OnCancelClick( wxCommandEvent& event );
     void OnOkClick( wxCommandEvent& event );
     void Cfg3DPath( wxCommandEvent& event );
+
+    void OnInitDlg( wxInitDialogEvent& event )
+    {
+        // Call the default wxDialog handler of a wxInitDialogEvent
+        TransferDataToWindow();
+
+        // Now all widgets have the size fixed, call FinishDialogSettings
+        FinishDialogSettings();
+    }
 };
 
 

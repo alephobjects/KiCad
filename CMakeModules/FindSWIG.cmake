@@ -25,6 +25,7 @@
 #=============================================================================
 # Copyright 2004-2009 Kitware, Inc.
 # Copyright 2011 Mathieu Malaterre <mathieu.malaterre@gmail.com>
+<<<<<<< HEAD
 #
 # Distributed under the OSI-approved BSD License (the "License");
 # see accompanying file Copyright.txt for details.

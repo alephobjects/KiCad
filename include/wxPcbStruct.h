@@ -74,6 +74,7 @@ namespace PCB { struct IFACE; }     // KIFACE_I is in pcbnew.cpp
  */
 #define PCB_EDIT_FRAME_NAME wxT( "PcbFrame" )
 
+
 class PCB_EDIT_FRAME : public PCB_BASE_EDIT_FRAME
 {
     friend struct PCB::IFACE;
@@ -223,6 +224,13 @@ public:
         throw( IO_ERROR, PARSE_ERROR );
 
     void OnQuit( wxCommandEvent& event );
+
+    /**
+     * Function GetAutoSaveFilePrefix
+     *
+     * @return the string to prepend to a file name for automatic save.
+     */
+    static wxString GetAutoSaveFilePrefix();
 
     /**
      * Execute a remote command send by Eeschema via a socket,
@@ -991,10 +999,24 @@ public:
                           double aXRef, double aYRef );
 
     /**
-     * Function ExportToIDF3
+     * Function OnExportIDF3
      * will export the current BOARD to a IDFv3 board and lib files.
      */
-    void ExportToIDF3( wxCommandEvent& event );
+    void OnExportIDF3( wxCommandEvent& event );
+
+    /**
+     * Function Export_IDF3
+     * Creates an IDF3 compliant BOARD (*.emn) and LIBRARY (*.emp) file.
+     *
+     * @param aPcb = a pointer to the board to be exported to IDF
+     * @param aFullFileName = the full filename of the export file
+     * @param aUseThou = set to true if the desired IDF unit is thou (mil)
+     * @param aXRef = the board Reference Point in mm, X value
+     * @param aYRef = the board Reference Point in mm, Y value
+     * @return true if OK
+     */
+    bool Export_IDF3( BOARD* aPcb, const wxString& aFullFileName,
+                      bool aUseThou, double aXRef, double aYRef );
 
     /**
      * Function ExporttoSPECCTRA
@@ -1582,14 +1604,17 @@ public:
      * @param aFootprints: a list of footprints to be spread out.
      * @param aMoveFootprintsOutsideBoardOnly: true to move only
      *        footprints outside the board outlines
-     *        (they are outside if the position of a footprint is outside
-     *        the board outlines bounding box).
+     *        (they are outside if the position of a footprint anchor is outside
+     *        the board outlines bounding box). It imply the board outlines exist
      * @param aCheckForBoardEdges: true to try to place footprints outside of
-     *        board edges.
+     *        board edges, if aSpreadAreaPosition is incorrectly chosen.
+     * @param aSpreadAreaPosition the position of the upper left corner of the
+     *        area used to spread footprints
      */
     void SpreadFootprints( std::vector<MODULE*>* aFootprints,
                            bool                  aMoveFootprintsOutsideBoardOnly,
-                           bool                  aCheckForBoardEdges );
+                           bool                  aCheckForBoardEdges,
+                           wxPoint               aSpreadAreaPosition );
 
     /**
      * Function AutoPlaceModule

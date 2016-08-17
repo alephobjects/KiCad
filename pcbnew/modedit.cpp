@@ -34,7 +34,7 @@
 #include <gestfich.h>
 #include <pgm_base.h>
 #include <trigo.h>
-#include <3d_viewer.h>
+#include <3d_viewer/eda_3d_viewer.h>
 #include <wxPcbStruct.h>
 #include <kicad_device_context.h>
 #include <macros.h>
@@ -63,7 +63,8 @@
 #include <footprint_wizard_frame.h>
 #include <pcbnew_config.h>
 
-#include <boost/bind.hpp>
+#include <functional>
+using namespace std::placeholders;
 
 
 // Functions defined in block_module_editor, but used here
@@ -127,16 +128,8 @@ BOARD_ITEM* FOOTPRINT_EDIT_FRAME::ModeditLocateAndDisplay( int aHotKeyCode )
         wxMenu      itemMenu;
 
         // Give a title to the selection menu. It also allow to close the popup menu without any action
-        wxMenuItem* item_title = new wxMenuItem( &itemMenu, wxID_NONE, _( "Selection Clarification" ) );
-
-#ifdef __WINDOWS__
-        wxFont      bold_font( *wxNORMAL_FONT );
-        bold_font.SetWeight( wxFONTWEIGHT_BOLD );
-        bold_font.SetStyle( wxFONTSTYLE_ITALIC );
-        item_title->SetFont( bold_font );
-#endif
-
-        itemMenu.Append( item_title );
+        AddMenuItem( &itemMenu, wxID_NONE, _( "Clarify Selection" ),
+                     KiBitmap( dismiss_xpm ) );
         itemMenu.AppendSeparator();
 
         int limit = std::min( MAX_ITEMS_IN_PICKER, m_Collector->GetCount() );
@@ -158,7 +151,7 @@ BOARD_ITEM* FOOTPRINT_EDIT_FRAME::ModeditLocateAndDisplay( int aHotKeyCode )
         // PCB_BASE_FRAME::ProcessItemSelection()
         // and it calls SetCurItem() which in turn calls DisplayInfo() on the
         // item.
-        m_canvas->SetAbortRequest( true );   // changed in false if an item
+        m_canvas->SetAbortRequest( true );   // changed in false if an item is selected
         PopupMenu( &itemMenu );              // m_AbortRequest = false if an item is selected
 
         m_canvas->MoveCursorToCrossHair();
@@ -192,7 +185,7 @@ void FOOTPRINT_EDIT_FRAME::LoadModuleFromBoard( wxCommandEvent& event )
     GetScreen()->ClearUndoRedoList();
     GetScreen()->ClrModify();
 
-    EDA_3D_FRAME* draw3DFrame = Get3DViewerFrame();
+    EDA_3D_VIEWER* draw3DFrame = Get3DViewerFrame();
 
     if( draw3DFrame )
         draw3DFrame->NewDisplay();
@@ -372,7 +365,7 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
                 updateView();
                 m_canvas->Refresh();
 
-                EDA_3D_FRAME* draw3DFrame = Get3DViewerFrame();
+                EDA_3D_VIEWER* draw3DFrame = Get3DViewerFrame();
 
                 if( draw3DFrame )
                     draw3DFrame->NewDisplay();
@@ -463,7 +456,8 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
                 if( pcbframe->IsGalCanvasActive() )
                 {
                     KIGFX::VIEW* view = pcbframe->GetGalCanvas()->GetView();
-                    source_module->RunOnChildren( boost::bind( &KIGFX::VIEW::Remove, view, _1 ) );
+                    source_module->RunOnChildren( std::bind( &KIGFX::VIEW::Remove, view,
+                                                                  std::placeholders::_1 ) );
                     view->Remove( source_module );
                 }
 
@@ -497,7 +491,8 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
                 ratsnest->Recalculate();
 
                 KIGFX::VIEW* view = pcbframe->GetGalCanvas()->GetView();
-                newmodule->RunOnChildren( boost::bind( &KIGFX::VIEW::Add, view, _1 ) );
+                newmodule->RunOnChildren( std::bind( &KIGFX::VIEW::Add, view,
+                                                       std::placeholders::_1 ) );
                 view->Add( newmodule );
                 pcbframe->GetGalCanvas()->ForceRefresh();
             }
@@ -518,7 +513,7 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         Zoom_Automatique( false );
         m_canvas->Refresh();
         {
-        EDA_3D_FRAME* draw3DFrame = Get3DViewerFrame();
+        EDA_3D_VIEWER* draw3DFrame = Get3DViewerFrame();
 
         if( draw3DFrame )
             draw3DFrame->NewDisplay();
@@ -580,7 +575,7 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         Zoom_Automatique( false );
 
         {
-        EDA_3D_FRAME* draw3DFrame = Get3DViewerFrame();
+        EDA_3D_VIEWER* draw3DFrame = Get3DViewerFrame();
 
         if( draw3DFrame )
             draw3DFrame->NewDisplay();

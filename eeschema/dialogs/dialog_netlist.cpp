@@ -52,6 +52,7 @@
 #include <wildcards_and_files_ext.h>
 #include <wildcards_and_files_ext.h>
 #include <invoke_sch_dialog.h>
+#include <netlist_exporters/netlist_exporter_pspice.h>
 
 #include <eeschema_id.h>
 
@@ -343,9 +344,11 @@ NETLIST_DIALOG::NETLIST_DIALOG( SCH_EDIT_FRAME* parent ) :
     InstallCustomPages();
 
     SetDefaultItem( m_buttonNetlist );
-    GetSizer()->SetSizeHints( this );
 
-    Centre();
+    FixOSXCancelButtonIssue();
+
+    // Now all widgets have the size fixed, call FinishDialogSettings
+    FinishDialogSettings();
 }
 
 

@@ -178,6 +178,7 @@ set( BMAPS_MID
     contrast_mode
     create_cmp_file
     checked_ok
+    color_materials
     component_select_unit
     component_select_alternate_shape
     config
@@ -215,6 +216,7 @@ set( BMAPS_MID
     delete_track
     delete
     directory
+    dismiss
     display_options
     down
     drag_module
@@ -411,6 +413,7 @@ set( BMAPS_MID
     open_library
     open_project
     open_document
+    options_3drender
     options_all_tracks_and_vias
     options_all_tracks
     options_all_vias
@@ -479,6 +482,7 @@ set( BMAPS_MID
     red
     reload2
     reload
+    render_mode
     reset_text
     resize_sheet
     rescue_pcbnew
@@ -509,6 +513,12 @@ set( BMAPS_MID
     select_w_layer
     shape_3d
     sheetset
+    sim_run
+    sim_stop
+    sim_tune
+    sim_probe
+    sim_add_signal
+    sim_settings
     setcolor_3d_bg
     setcolor_silkscreen
     setcolor_soldermask

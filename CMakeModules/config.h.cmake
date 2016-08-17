@@ -39,12 +39,12 @@
 #include <iso646.h>
 #endif
 
-#if defined( HAVE_STRCASECMP )
-#define stricmp strcasecmp
+#if !defined( HAVE_STRCASECMP )
+#define strcasecmp stricmp
 #endif
 
-#if defined( HAVE_STRNCASECMP )
-#define strnicmp strncasecmp
+#if !defined( HAVE_STRNCASECMP )
+#define strncasecmp strnicmp
 #endif
 
 // Use Posix getc_unlocked() instead of getc() when it's available.
@@ -69,8 +69,8 @@
 /// When defined, build the GITHUB_PLUGIN for pcbnew.
 #cmakedefine BUILD_GITHUB_PLUGIN
 
-/// When defined, use KIWAY and KIFACE DSOs
-#cmakedefine USE_KIWAY_DLLS
+/// When defined, Eeschema is built with I/O manager plugin.
+#cmakedefine USE_SCH_IO_MANAGER
 
 /// A file extension with a leading '.' is a suffix, and this one is used on
 /// top level program modules which implement the KIFACE.

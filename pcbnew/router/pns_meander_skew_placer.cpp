@@ -18,12 +18,7 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <boost/foreach.hpp>
-
 #include <base_units.h> // God forgive me doing this...
-#include <colors.h>
-
-#include "trace.h"
 
 #include "pns_node.h"
 #include "pns_itemset.h"
@@ -31,6 +26,7 @@
 #include "pns_meander_skew_placer.h"
 
 #include "pns_router.h"
+#include "pns_debug_decorator.h"
 
 
 PNS_MEANDER_SKEW_PLACER::PNS_MEANDER_SKEW_PLACER ( PNS_ROUTER* aRouter ) :
@@ -110,7 +106,7 @@ int PNS_MEANDER_SKEW_PLACER::origPathLength( ) const
 int PNS_MEANDER_SKEW_PLACER::itemsetLength( const PNS_ITEMSET& aSet ) const
 {
     int total = 0;
-    BOOST_FOREACH( const PNS_ITEM* item, aSet.CItems() )
+    for( const PNS_ITEM* item : aSet.CItems() )
     {
         if( const PNS_LINE* l = dyn_cast<const PNS_LINE*>( item ) )
         {
@@ -130,16 +126,16 @@ int PNS_MEANDER_SKEW_PLACER::currentSkew() const
 
 bool PNS_MEANDER_SKEW_PLACER::Move( const VECTOR2I& aP, PNS_ITEM* aEndItem )
 {
-	BOOST_FOREACH( const PNS_ITEM* item, m_tunedPathP.CItems() )
+	for( const PNS_ITEM* item : m_tunedPathP.CItems() )
     {
         if( const PNS_LINE* l = dyn_cast<const PNS_LINE*>( item ) )
-            Router()->DisplayDebugLine( l->CLine(), 5, 10000 );
+            Dbg()->AddLine( l->CLine(), 5, 10000 );
     }
 
-    BOOST_FOREACH( const PNS_ITEM* item, m_tunedPathN.CItems() )
+    for( const PNS_ITEM* item : m_tunedPathN.CItems() )
     {
         if( const PNS_LINE* l = dyn_cast<const PNS_LINE*>( item ) )
-            Router()->DisplayDebugLine( l->CLine(), 4, 10000 );
+            Dbg()->AddLine( l->CLine(), 4, 10000 );
     }
 
     return doMove( aP, aEndItem, m_coupledLength + m_settings.m_targetSkew );
@@ -171,4 +167,3 @@ const wxString PNS_MEANDER_SKEW_PLACER::TuningInfo() const
 
     return status;
 }
-

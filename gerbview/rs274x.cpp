@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2007-2016 Jean-Pierre Charras  jp.charras at wanadoo.fr
- * Copyright (C) 1992-2016 KiCad Developers, see AUTHOR.txt for contributors.
+ * Copyright (C) 1992-2016 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -82,9 +82,23 @@ enum RS274X_PARAMETERS {
     // X2 extention attribute commands
     // Mainly are found standard attributes and user attributes
     // standard attributes commands are:
-    // TF (file attribute)
+    // TF (file attribute) TO (net attribute)
     // TA (aperture attribute) and TD (delete aperture attribute)
     FILE_ATTRIBUTE   = CODE( 'T', 'F' ),
+
+    // X2 extention Net attribute info
+    // Net attribute options are:
+    // TO (net attribute data): TO.CN or TO.P TO.N or TO.C
+    NET_ATTRIBUTE   = CODE( 'T', 'O' ),
+
+    // X2 extention Aperture attribute TA
+    APERTURE_ATTRIBUTE   = CODE( 'T', 'A' ),
+
+    // TD (delete aperture/object attribute):
+    // Delete aperture attribute added by %TA or Oblect attribute added b %TO
+    // TD (delete all) or %TD<attr name> to delete <attr name>.
+    // eg: TD.P or TD.N or TD.C ...
+    REMOVE_APERTURE_ATTRIBUTE   = CODE( 'T', 'D' ),
 
     // Layer specific parameters
     // May be used singly or may be layer specfic
@@ -113,20 +127,67 @@ enum RS274X_PARAMETERS {
 static int ReadXCommand( char*& text )
 {
     int result;
+    int currbyte;
 
     if( text && *text )
-        result = *text++ << 8;
+    {
+        currbyte = *text++;
+        result = ( currbyte & 0xFF ) << 8;
+    }
     else
         return -1;
 
     if( text && *text )
-        result += *text++;
+    {
+        currbyte = *text++;
+        result += currbyte & 0xFF;
+    }
     else
         return -1;
 
     return result;
 }
 
+/**
+ * convert a string read from a gerber file to an unicode string
+ * usual chars are just copied. \hhhh values are converted to
+ * the unicoade char value
+ */
+static const wxString fromGerberString( const wxString& aGbrString )
+{
+    wxString text;
+
+    for( unsigned ii = 0; ii < aGbrString.size(); ++ii )
+    {
+        if( aGbrString[ii] == '\\' )
+        {
+            unsigned value = 0;
+
+            for( int jj = 0; jj < 4; jj++ )
+            {   // Convert 4 hexa digits to binary value:
+                ii++;
+                value <<= 4;
+                int digit = aGbrString[ii];
+
+                if( digit >= '0' && digit <= '9' )
+                    digit -= '0';
+                else if( digit >= 'A' && digit <= 'F' )
+                    digit -= 'A' - 10;
+                else if( digit >= 'a' && digit <= 'f' )
+                    digit -= 'a' - 10;
+                else digit = 0;
+
+                value += digit & 0xF;
+            }
+
+            text.Append( wxUniChar( value ) );
+        }
+        else
+            text.Append( aGbrString[ii] );
+    }
+
+    return text;
+}
 
 bool GERBER_FILE_IMAGE::ReadRS274XCommand( char* buff, char*& text )
 {
@@ -309,7 +370,7 @@ bool GERBER_FILE_IMAGE::ExecuteRS274XCommand( int command, char* buff, char*& te
 
     case AXIS_SELECT:       // command ASAXBY*% or %ASAYBX*%
         m_SwapAxis = false;
-        if( strnicmp( text, "AYBX", 4 ) == 0 )
+        if( strncasecmp( text, "AYBX", 4 ) == 0 )
             m_SwapAxis = true;
         break;
 
@@ -352,6 +413,7 @@ bool GERBER_FILE_IMAGE::ExecuteRS274XCommand( int command, char* buff, char*& te
     {
         X2_ATTRIBUTE dummy;
         dummy.ParseAttribCmd( m_Current_File, buff, GERBER_BUFZ, text );
+
         if( dummy.IsFileFunction() )
         {
             delete m_FileFunction;
@@ -366,6 +428,55 @@ bool GERBER_FILE_IMAGE::ExecuteRS274XCommand( int command, char* buff, char*& te
             m_PartString = dummy.GetPrm( 1 );
         }
      }
+        break;
+
+    case APERTURE_ATTRIBUTE:    // Command %TA ... Not yet supported
+        {
+        X2_ATTRIBUTE dummy;
+        dummy.ParseAttribCmd( m_Current_File, buff, GERBER_BUFZ, text );
+
+        if( dummy.GetAttribute() == ".AperFunction" )
+        {
+            m_AperFunction = dummy.GetPrm( 1 );
+
+            // A few function values can have other parameters. Add them
+            for( int ii = 2; ii < dummy.GetPrmCount(); ii++ )
+                m_AperFunction << "," << dummy.GetPrm( ii );
+        }
+        }
+        break;
+
+    case NET_ATTRIBUTE:    // Command %TO currently %TO.P %TO.N and %TO.C
+        {
+        X2_ATTRIBUTE dummy;
+
+        dummy.ParseAttribCmd( m_Current_File, buff, GERBER_BUFZ, text );
+
+        if( dummy.GetAttribute() == ".N" )
+        {
+            m_NetAttributeDict.m_NetAttribType |= GBR_NETLIST_METADATA::GBR_NETINFO_NET;
+            m_NetAttributeDict.m_Netname = fromGerberString( dummy.GetPrm( 1 ) );
+        }
+        else if( dummy.GetAttribute() == ".C" )
+        {
+            m_NetAttributeDict.m_NetAttribType |= GBR_NETLIST_METADATA::GBR_NETINFO_CMP;
+            m_NetAttributeDict.m_Cmpref = fromGerberString( dummy.GetPrm( 1 ) );
+        }
+        else if( dummy.GetAttribute() == ".P" )
+        {
+            m_NetAttributeDict.m_NetAttribType |= GBR_NETLIST_METADATA::GBR_NETINFO_PAD;
+            m_NetAttributeDict.m_Cmpref = fromGerberString( dummy.GetPrm( 1 ) );
+            m_NetAttributeDict.m_Padname = fromGerberString( dummy.GetPrm( 2 ) );
+        }
+        }
+        break;
+
+    case REMOVE_APERTURE_ATTRIBUTE:    // Command %TD ...
+        {
+        X2_ATTRIBUTE dummy;
+        dummy.ParseAttribCmd( m_Current_File, buff, GERBER_BUFZ, text );
+        RemoveAttribute( dummy );
+        }
         break;
 
     case OFFSET:        // command: OFAnnBnn (nn = float number) = layer Offset
@@ -430,13 +541,13 @@ bool GERBER_FILE_IMAGE::ExecuteRS274XCommand( int command, char* buff, char*& te
         break;
 
     case IMAGE_ROTATION:    // command IR0* or IR90* or IR180* or IR270*
-        if( strnicmp( text, "0*", 2 ) == 0 )
+        if( strncasecmp( text, "0*", 2 ) == 0 )
             m_ImageRotation = 0;
-        else if( strnicmp( text, "90*", 3 ) == 0 )
+        else if( strncasecmp( text, "90*", 3 ) == 0 )
             m_ImageRotation = 90;
-        else if( strnicmp( text, "180*", 4 ) == 0 )
+        else if( strncasecmp( text, "180*", 4 ) == 0 )
             m_ImageRotation = 180;
-        else if( strnicmp( text, "270*", 4 ) == 0 )
+        else if( strncasecmp( text, "270*", 4 ) == 0 )
             m_ImageRotation = 270;
         else
             AddMessageToList( _( "RS274X: Command \"IR\" rotation value not allowed" ) );
@@ -570,7 +681,7 @@ bool GERBER_FILE_IMAGE::ExecuteRS274XCommand( int command, char* buff, char*& te
         break;
 
     case IMAGE_POLARITY:
-        if( strnicmp( text, "NEG", 3 ) == 0 )
+        if( strncasecmp( text, "NEG", 3 ) == 0 )
             m_ImageNegative = true;
         else
             m_ImageNegative = false;
@@ -642,8 +753,11 @@ bool GERBER_FILE_IMAGE::ExecuteRS274XCommand( int command, char* buff, char*& te
 
         D_CODE* dcode;
         dcode = GetDCODE( code );
+
         if( dcode == NULL )
             break;
+
+        dcode->m_AperFunction = m_AperFunction;
 
         // at this point, text points to character after the ADD<num>,
         // i.e. R in example above.  If text[0] is one of the usual

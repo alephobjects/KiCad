@@ -32,7 +32,6 @@
 #include <confirm.h>
 #include <macros.h>
 #include <trigo.h>
-#include <3d_struct.h>
 #include <class_title_block.h>
 
 #include <class_board.h>
@@ -50,8 +49,6 @@
 #include <pcb_plot_params.h>
 #include <zones.h>
 #include <pcb_parser.h>
-
-#include <boost/make_shared.hpp>
 
 using namespace PCB_KEYS_T;
 
@@ -338,17 +335,16 @@ void PCB_PARSER::parseEDA_TEXT( EDA_TEXT* aText ) throw( PARSE_ERROR, IO_ERROR )
 }
 
 
-S3D_MASTER* PCB_PARSER::parse3DModel() throw( PARSE_ERROR, IO_ERROR )
+S3D_INFO* PCB_PARSER::parse3DModel() throw( PARSE_ERROR, IO_ERROR )
 {
     wxCHECK_MSG( CurTok() == T_model, NULL,
-                 wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as S3D_MASTER." ) );
+                 wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as S3D_INFO." ) );
 
     T token;
 
-    std::unique_ptr< S3D_MASTER > n3D( new S3D_MASTER( NULL ) );
-
+    S3D_INFO* n3D = new S3D_INFO;
     NeedSYMBOLorNUMBER();
-    n3D->SetShape3DName( FromUTF8() );
+    n3D->m_Filename = FromUTF8();
 
     for( token = NextTok();  token != T_RIGHT;  token = NextTok() )
     {
@@ -366,9 +362,9 @@ S3D_MASTER* PCB_PARSER::parse3DModel() throw( PARSE_ERROR, IO_ERROR )
             if( token != T_xyz )
                 Expecting( T_xyz );
 
-            n3D->m_MatPosition.x = parseDouble( "x value" );
-            n3D->m_MatPosition.y = parseDouble( "y value" );
-            n3D->m_MatPosition.z = parseDouble( "z value" );
+            n3D->m_Offset.x = parseDouble( "x value" );
+            n3D->m_Offset.y = parseDouble( "y value" );
+            n3D->m_Offset.z = parseDouble( "z value" );
             NeedRIGHT();
             break;
 
@@ -379,9 +375,9 @@ S3D_MASTER* PCB_PARSER::parse3DModel() throw( PARSE_ERROR, IO_ERROR )
             if( token != T_xyz )
                 Expecting( T_xyz );
 
-            n3D->m_MatScale.x = parseDouble( "x value" );
-            n3D->m_MatScale.y = parseDouble( "y value" );
-            n3D->m_MatScale.z = parseDouble( "z value" );
+            n3D->m_Scale.x = parseDouble( "x value" );
+            n3D->m_Scale.y = parseDouble( "y value" );
+            n3D->m_Scale.z = parseDouble( "z value" );
             NeedRIGHT();
             break;
 
@@ -392,9 +388,9 @@ S3D_MASTER* PCB_PARSER::parse3DModel() throw( PARSE_ERROR, IO_ERROR )
             if( token != T_xyz )
                 Expecting( T_xyz );
 
-            n3D->m_MatRotation.x = parseDouble( "x value" );
-            n3D->m_MatRotation.y = parseDouble( "y value" );
-            n3D->m_MatRotation.z = parseDouble( "z value" );
+            n3D->m_Rotation.x = parseDouble( "x value" );
+            n3D->m_Rotation.y = parseDouble( "y value" );
+            n3D->m_Rotation.z = parseDouble( "z value" );
             NeedRIGHT();
             break;
 
@@ -405,7 +401,7 @@ S3D_MASTER* PCB_PARSER::parse3DModel() throw( PARSE_ERROR, IO_ERROR )
         NeedRIGHT();
     }
 
-    return n3D.release();
+    return n3D;
 }
 
 
@@ -1264,7 +1260,7 @@ void PCB_PARSER::parseNETCLASS() throw( IO_ERROR, PARSE_ERROR )
 
     T token;
 
-    NETCLASSPTR nc = boost::make_shared<NETCLASS>( wxEmptyString );
+    NETCLASSPTR nc = std::make_shared<NETCLASS>( wxEmptyString );
 
     // Read netclass name (can be a name or just a number like track width)
     NeedSYMBOLorNUMBER();
@@ -1305,13 +1301,21 @@ void PCB_PARSER::parseNETCLASS() throw( IO_ERROR, PARSE_ERROR )
             nc->SetuViaDrill( parseBoardUnits( T_uvia_drill ) );
             break;
 
+        case T_diff_pair_width:
+            nc->SetDiffPairWidth( parseBoardUnits( T_diff_pair_width ) );
+            break;
+
+        case T_diff_pair_gap:
+            nc->SetDiffPairGap( parseBoardUnits( T_diff_pair_gap ) );
+            break;
+
         case T_add_net:
             NeedSYMBOLorNUMBER();
             nc->Add( FromUTF8() );
             break;
 
         default:
-            Expecting( "clearance, trace_width, via_dia, via_drill, uvia_dia, uvia_drill, or add_net" );
+            Expecting( "clearance, trace_width, via_dia, via_drill, uvia_dia, uvia_drill, diff_pair_width, diff_pair_gap or add_net" );
         }
 
         NeedRIGHT();

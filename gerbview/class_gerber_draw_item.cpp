@@ -62,6 +62,19 @@ GERBER_DRAW_ITEM::~GERBER_DRAW_ITEM()
 }
 
 
+void GERBER_DRAW_ITEM::SetNetAttributes( const GBR_NETLIST_METADATA& aNetAttributes )
+{
+    m_netAttributes = aNetAttributes;
+
+    if( ( m_netAttributes.m_NetAttribType & GBR_NETLIST_METADATA::GBR_NETINFO_CMP ) ||
+        ( m_netAttributes.m_NetAttribType & GBR_NETLIST_METADATA::GBR_NETINFO_PAD ) )
+        m_GerberImageFile->m_ComponentsList.insert( std::make_pair( m_netAttributes.m_Cmpref, 0 ) );
+
+    if( ( m_netAttributes.m_NetAttribType & GBR_NETLIST_METADATA::GBR_NETINFO_NET ) )
+        m_GerberImageFile->m_NetnamesList.insert( std::make_pair( m_netAttributes.m_Netname, 0 ) );
+}
+
+
 int GERBER_DRAW_ITEM::GetLayer() const
 {
     // returns the layer this item is on, or 0 if the m_GerberImageFile is NULL.
@@ -484,13 +497,21 @@ void GERBER_DRAW_ITEM::DrawGbrPoly( EDA_RECT*      aClipBox,
 void GERBER_DRAW_ITEM::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList )
 {
     wxString msg;
+    wxString text;
 
     msg = ShowGBRShape();
     aList.push_back( MSG_PANEL_ITEM( _( "Type" ), msg, DARKCYAN ) );
 
     // Display D_Code value:
-    msg.Printf( wxT( "%d" ), m_DCode );
-    aList.push_back( MSG_PANEL_ITEM( _( "D Code" ), msg, RED ) );
+    msg.Printf( _( "D Code %d" ), m_DCode );
+    D_CODE* apertDescr = GetDcodeDescr();
+
+    if( apertDescr->m_AperFunction.IsEmpty() )
+        text = _( "No attribute" );
+    else
+        text = apertDescr->m_AperFunction;
+
+    aList.push_back( MSG_PANEL_ITEM( msg, text, RED ) );
 
     // Display graphic layer number
     msg.Printf( wxT( "%d" ), GetLayer() + 1 );
@@ -516,6 +537,36 @@ void GERBER_DRAW_ITEM::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList )
     // Display AB axis swap (item specific)
     msg = m_swapAxis ? wxT( "A=Y B=X" ) : wxT( "A=X B=Y" );
     aList.push_back( MSG_PANEL_ITEM( _( "AB axis" ), msg, DARKRED ) );
+
+    // Display net info, if exists
+    if( m_netAttributes.m_NetAttribType == GBR_NETLIST_METADATA::GBR_NETINFO_UNSPECIFIED )
+        return;
+
+    // Build full net info:
+    wxString net_msg;
+    wxString cmp_pad_msg;
+
+    if( ( m_netAttributes.m_NetAttribType & GBR_NETLIST_METADATA::GBR_NETINFO_NET ) )
+    {
+        net_msg = _( "Net:" );
+        net_msg << " " << m_netAttributes.m_Netname;
+    }
+
+    if( ( m_netAttributes.m_NetAttribType & GBR_NETLIST_METADATA::GBR_NETINFO_PAD ) )
+    {
+        cmp_pad_msg.Printf( _( "Cmp: %s;  Pad: %s" ),
+                                GetChars( m_netAttributes.m_Cmpref ),
+                                GetChars( m_netAttributes.m_Padname ) );
+    }
+
+    else if( ( m_netAttributes.m_NetAttribType & GBR_NETLIST_METADATA::GBR_NETINFO_CMP ) )
+    {
+        cmp_pad_msg = _( "Cmp:" );
+        cmp_pad_msg << " " << m_netAttributes.m_Cmpref;
+    }
+
+
+    aList.push_back( MSG_PANEL_ITEM( net_msg, cmp_pad_msg, CYAN ) );
 }
 
 

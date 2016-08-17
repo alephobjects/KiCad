@@ -39,11 +39,14 @@
 #endif /* __WXDEBUG__ */
 
 #include <limits>
-#include <boost/bind.hpp>
+#include <functional>
+using namespace std::placeholders;
 
 
 using namespace KIGFX;
 
+// The current font is "Ubuntu Mono" available under Ubuntu Font Licence 1.0
+// (see ubuntu-font-licence-1.0.txt for details)
 #include "bitmap_font_img.c"
 #include "bitmap_font_desc.c"
 
@@ -1048,7 +1051,7 @@ int OPENGL_GAL::BeginGroup()
 {
     isGrouping = true;
 
-    boost::shared_ptr<VERTEX_ITEM> newItem( new VERTEX_ITEM( *cachedManager ) );
+    std::shared_ptr<VERTEX_ITEM> newItem = std::make_shared<VERTEX_ITEM>( *cachedManager );
     int groupNumber = getNewGroupNumber();
     groups.insert( std::make_pair( groupNumber, newItem ) );
 
@@ -1532,7 +1535,7 @@ void OPENGL_GAL::OPENGL_TEST::Render( wxPaintEvent& WXUNUSED( aEvent ) )
 
         // One test is enough - close the testing dialog when the test is finished
         Disconnect( wxEVT_PAINT, wxPaintEventHandler( OPENGL_GAL::OPENGL_TEST::Render ) );
-        CallAfter( boost::bind( &wxDialog::EndModal, m_parent, wxID_NONE ) );
+        CallAfter( std::bind( &wxDialog::EndModal, m_parent, wxID_NONE ) );
 
         GL_CONTEXT_MANAGER::Get().LockCtx( m_context, this );
         GLenum err = glewInit();
@@ -1612,8 +1615,8 @@ void CALLBACK VertexCallback( GLvoid* aVertexPtr, void* aData )
     OPENGL_GAL::TessParams* param = static_cast<OPENGL_GAL::TessParams*>( aData );
     VERTEX_MANAGER* vboManager = param->vboManager;
 
-    if( vboManager )
-        vboManager->Vertex( vertex[0], vertex[1], vertex[2] );
+    assert( vboManager );
+    vboManager->Vertex( vertex[0], vertex[1], vertex[2] );
 }
 
 

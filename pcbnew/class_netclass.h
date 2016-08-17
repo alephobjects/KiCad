@@ -31,12 +31,10 @@
 #ifndef CLASS_NETCLASS_H
 #define CLASS_NETCLASS_H
 
+
+#include <macros.h>
 #include <set>
-#include <map>
-#include <boost/shared_ptr.hpp>
-
-#include <wx/string.h>
-
+#include <memory>
 #include <richio.h>
 
 
@@ -61,6 +59,8 @@ private:
     static const int DEFAULT_VIA_DIAMETER;
     static const int DEFAULT_UVIA_DIAMETER;
     static const int DEFAULT_TRACK_WIDTH;
+    static const int DEFAULT_DIFF_PAIR_WIDTH;
+    static const int DEFAULT_DIFF_PAIR_GAP;
 
 protected:
     wxString    m_Name;                 ///< Name of the net class
@@ -80,6 +80,9 @@ protected:
 
     int         m_uViaDia;              ///< microvia diameter
     int         m_uViaDrill;            ///< microvia drill hole diameter
+
+    int         m_diffPairWidth;
+    int         m_diffPairGap;
 
 public:
 
@@ -181,6 +184,12 @@ public:
     int     GetuViaDrill() const            { return m_uViaDrill; }
     void    SetuViaDrill( int aSize )       { m_uViaDrill = aSize; }
 
+    int     GetDiffPairWidth() const            { return m_diffPairWidth; }
+    void    SetDiffPairWidth( int aSize )       { m_diffPairWidth = aSize; }
+
+    int     GetDiffPairGap() const            { return m_diffPairGap; }
+    void    SetDiffPairGap( int aSize )       { m_diffPairGap = aSize; }
+
     /**
      * Function SetParams
      * will set all the parameters by copying them from \a defaults.
@@ -206,7 +215,10 @@ public:
 #endif
 };
 
-typedef boost::shared_ptr<NETCLASS> NETCLASSPTR;
+
+DECL_SPTR_FOR_SWIG( NETCLASSPTR, NETCLASS )
+DECL_MAP_FOR_SWIG( NETCLASS_MAP, wxString, NETCLASSPTR );
+
 
 /**
  * Class NETCLASSES
@@ -217,10 +229,9 @@ typedef boost::shared_ptr<NETCLASS> NETCLASSPTR;
 class NETCLASSES
 {
 private:
-    typedef std::map<wxString, NETCLASSPTR> NETCLASSMAP;
 
     /// all the NETCLASSes except the default one.
-    NETCLASSMAP             m_NetClasses;
+    NETCLASS_MAP             m_NetClasses;
 
     /// the default NETCLASS.
     NETCLASSPTR             m_Default;
@@ -238,11 +249,11 @@ public:
         m_NetClasses.clear();
     }
 
-    typedef NETCLASSMAP::iterator iterator;
+    typedef NETCLASS_MAP::iterator iterator;
     iterator begin() { return m_NetClasses.begin(); }
     iterator end()   { return m_NetClasses.end(); }
 
-    typedef NETCLASSMAP::const_iterator const_iterator;
+    typedef NETCLASS_MAP::const_iterator const_iterator;
     const_iterator begin() const { return m_NetClasses.begin(); }
     const_iterator end()   const { return m_NetClasses.end(); }
 

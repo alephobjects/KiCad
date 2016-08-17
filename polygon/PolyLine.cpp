@@ -423,7 +423,7 @@ CPolyLine* CPolyLine::Fillet( unsigned int aRadius, unsigned int aSegments )
             double          denom   = sqrt( 2.0 / ( 1 + cosine ) - 1 );
 
             // Do nothing in case of parallel edges
-            if( std::isinf( denom ) )
+            if( !std::isfinite( denom ) )
                 continue;
 
             // Limit rounding distance to one half of an edge
@@ -750,7 +750,7 @@ void CPolyLine::Hatch()
     else
         spacing = m_hatchPitch * 2;
 
-    // set the "length" of hatch lines (the lenght on horizontal axis)
+    // set the "length" of hatch lines (the length on horizontal axis)
     double  hatch_line_len = m_hatchPitch;
 
     // To have a better look, give a slope depending on the layer
