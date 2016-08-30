@@ -60,13 +60,23 @@ bool NETLIST_EXPORTER_PSPICE::Format( OUTPUTFORMATTER* aFormatter, unsigned aCtl
     // Write .include directives
     for( auto lib : m_libraries )
     {
+        wxString full_path;
+
         if( ( aCtl & NET_ADJUST_INCLUDE_PATHS ) && m_paths )
         {
             // Look for the library in known search locations
-            lib = m_paths->FindValidPath( lib );
+            full_path = m_paths->FindValidPath( lib );
         }
 
-        aFormatter->Print( 0, ".include %s\n", (const char*) lib.c_str() );
+        if( full_path.IsEmpty() )
+        {
+            DisplayError( NULL, wxString::Format( wxT( "Could not find library file %s" ), lib ) );
+            return false;
+        }
+        else
+        {
+            aFormatter->Print( 0, ".include \"%s\"\n", (const char*) full_path.c_str() );
+        }
     }
 
     for( const auto& item : m_spiceItems )
@@ -300,7 +310,11 @@ bool NETLIST_EXPORTER_PSPICE::ProcessNetlist( unsigned aCtl )
             for( unsigned ii = 0; ii < m_SortedComponentPinList.size(); ii++ )
             {
                 NETLIST_OBJECT* pin = m_SortedComponentPinList[ii];
-                assert( pin );
+
+                // NETLIST_EXPORTER marks removed pins by setting them to NULL
+                if( !pin )
+                    continue;
+
                 spiceItem.m_pins.push_back( pin );
                 pinNames.Add( pin->GetPinNumText() );
 

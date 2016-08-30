@@ -100,7 +100,7 @@ TRACE_DESC::TRACE_DESC( const NETLIST_EXPORTER_PSPICE_SIM& aExporter, const wxSt
 
 
 SIM_PLOT_FRAME::SIM_PLOT_FRAME( KIWAY* aKiway, wxWindow* aParent )
-    : SIM_PLOT_FRAME_BASE( aParent ), m_settingsDlg( this ), m_lastSimPlot( nullptr )
+    : SIM_PLOT_FRAME_BASE( aParent ), m_lastSimPlot( nullptr )
 {
     SetKiway( this, aKiway );
 
@@ -108,6 +108,19 @@ SIM_PLOT_FRAME::SIM_PLOT_FRAME( KIWAY* aKiway, wxWindow* aParent )
 
     if( m_schematicFrame == NULL )
         throw std::runtime_error( "There is no schematic window" );
+
+    m_simulator = SPICE_SIMULATOR::CreateInstance( "ngspice" );
+
+    if( !m_simulator )
+    {
+        throw std::runtime_error( "Could not create simulator instance" );
+        return;
+    }
+
+    m_simulator->Init();
+
+    m_reporter = new SIM_THREAD_REPORTER( this );
+    m_simulator->SetReporter( m_reporter );
 
     updateNetlistExporter();
 
@@ -145,12 +158,22 @@ SIM_PLOT_FRAME::SIM_PLOT_FRAME( KIWAY* aKiway, wxWindow* aParent )
 
     m_toolBar->Realize();
     m_plotNotebook->SetPageText( 0, _( "Welcome!" ) );
-    m_simulator.reset( SPICE_SIMULATOR::CreateInstance( "ngspice" ) );
+
+    // the settings dialog will be created later, on demand.
+    // if created in the ctor, for some obscure reason, there is an issue
+    // on Windows: when open it, the simulator frame is sent to the background.
+    // instead of beeing behind the dialog frame (as it does)
+    m_settingsDlg = NULL;
 }
 
 
 SIM_PLOT_FRAME::~SIM_PLOT_FRAME()
 {
+    m_simulator->SetReporter( nullptr );
+    delete m_reporter;
+
+    if( m_settingsDlg )
+        m_settingsDlg->Destroy();
 }
 
 
@@ -159,11 +182,8 @@ void SIM_PLOT_FRAME::StartSimulation()
     STRING_FORMATTER formatter;
     SIM_PLOT_PANEL* plotPanel = CurrentPlot();
 
-    if( !m_simulator )
-    {
-        DisplayError( this, wxT( "Could not create simulator instance" ) );
-        return;
-    }
+    if( !m_settingsDlg )
+        m_settingsDlg = new DIALOG_SIM_SETTINGS( this );
 
     m_simConsole->Clear();
     updateNetlistExporter();
@@ -171,20 +191,18 @@ void SIM_PLOT_FRAME::StartSimulation()
     if( plotPanel )
         m_exporter->SetSimCommand( m_plots[plotPanel].m_simCommand );
 
-    if( !m_exporter->Format( &formatter, m_settingsDlg.GetNetlistOptions() ) )
+    if( !m_exporter->Format( &formatter, m_settingsDlg->GetNetlistOptions() ) )
     {
-        DisplayError( this, wxT( "There were errors during netlist export, aborted." ) );
+        DisplayError( this, _( "There were errors during netlist export, aborted." ) );
         return;
     }
 
     if( m_exporter->GetSimType() == ST_UNKNOWN )
     {
-        DisplayInfoMessage( this, wxT( "You need to select the simulation settings first." ) );
+        DisplayInfoMessage( this, _( "You need to select the simulation settings first." ) );
         return;
     }
 
-    m_simulator->SetReporter( new SIM_THREAD_REPORTER( this ) );
-    m_simulator->Init();
     m_simulator->LoadNetlist( formatter.GetString() );
     updateTuners();
     applyTuners();
@@ -194,8 +212,7 @@ void SIM_PLOT_FRAME::StartSimulation()
 
 void SIM_PLOT_FRAME::StopSimulation()
 {
-    if( m_simulator )
-        m_simulator->Stop();
+    m_simulator->Stop();
 }
 
 
@@ -367,9 +384,6 @@ void SIM_PLOT_FRAME::updateNetlistExporter()
 
 bool SIM_PLOT_FRAME::updatePlot( const TRACE_DESC& aDescriptor, SIM_PLOT_PANEL* aPanel )
 {
-    if( !m_simulator )
-        return false;
-
     SIM_TYPE simType = m_exporter->GetSimType();
     wxString spiceVector = m_exporter->GetSpiceVector( aDescriptor.GetName(),
             aDescriptor.GetType(), aDescriptor.GetParam() );
@@ -494,6 +508,7 @@ void SIM_PLOT_FRAME::applyTuners()
         /// @todo no ngspice hardcoding
         std::string command( "alter @" + tuner->GetSpiceName()
                 + "=" + tuner->GetValue().ToSpiceString() );
+
         m_simulator->Command( command );
     }
 }
@@ -635,8 +650,8 @@ void SIM_PLOT_FRAME::menuNewPlot( wxCommandEvent& aEvent )
 
 void SIM_PLOT_FRAME::menuOpenWorkbook( wxCommandEvent& event )
 {
-    wxFileDialog openDlg( this, wxT( "Open simulation workbook" ), "", "",
-            "Workbook file (*.wbk)|*.wbk", wxFD_OPEN | wxFD_FILE_MUST_EXIST );
+    wxFileDialog openDlg( this, _( "Open simulation workbook" ), "", "",
+            _( "Workbook file (*.wbk)|*.wbk" ), wxFD_OPEN | wxFD_FILE_MUST_EXIST );
 
     if( openDlg.ShowModal() == wxID_CANCEL )
         return;
@@ -651,14 +666,14 @@ void SIM_PLOT_FRAME::menuSaveWorkbook( wxCommandEvent& event )
     if( !CurrentPlot() )
         return;
 
-    wxFileDialog saveDlg( this, wxT( "Save simulation workbook" ), "", "",
-                "Workbook file (*.wbk)|*.wbk", wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
+    wxFileDialog saveDlg( this, _( "Save simulation workbook" ), "", "",
+                _( "Workbook file (*.wbk)|*.wbk" ), wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
 
     if( saveDlg.ShowModal() == wxID_CANCEL )
         return;
 
     if( !saveWorkbook( saveDlg.GetPath() ) )
-        DisplayError( this, wxT( "There was an error while saving the workbook file" ) );
+        DisplayError( this, _( "There was an error while saving the workbook file" ) );
 }
 
 
@@ -667,8 +682,8 @@ void SIM_PLOT_FRAME::menuSaveImage( wxCommandEvent& event )
     if( !CurrentPlot() )
         return;
 
-    wxFileDialog saveDlg( this, wxT( "Save plot as image" ), "", "",
-                "PNG file (*.png)|*.png", wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
+    wxFileDialog saveDlg( this, _( "Save plot as image" ), "", "",
+                _( "PNG file (*.png)|*.png" ), wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
 
     if( saveDlg.ShowModal() == wxID_CANCEL )
         return;
@@ -684,7 +699,7 @@ void SIM_PLOT_FRAME::menuSaveCsv( wxCommandEvent& event )
 
     const wxChar SEPARATOR = ';';
 
-    wxFileDialog saveDlg( this, wxT( "Save plot data" ), "", "",
+    wxFileDialog saveDlg( this, _( "Save plot data" ), "", "",
                 "CSV file (*.csv)|*.csv", wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
 
     if( saveDlg.ShowModal() == wxID_CANCEL )
@@ -846,18 +861,21 @@ void SIM_PLOT_FRAME::onSettings( wxCommandEvent& event )
 
     if( !m_exporter->ProcessNetlist( NET_ALL_FLAGS ) )
     {
-        DisplayError( this, wxT( "There were errors during netlist export, aborted." ) );
+        DisplayError( this, _( "There were errors during netlist export, aborted." ) );
         return;
     }
 
+    if( !m_settingsDlg )
+        m_settingsDlg = new DIALOG_SIM_SETTINGS( this );
+
     if( plotPanel )
-        m_settingsDlg.SetSimCommand( m_plots[plotPanel].m_simCommand );
+        m_settingsDlg->SetSimCommand( m_plots[plotPanel].m_simCommand );
 
-    m_settingsDlg.SetNetlistExporter( m_exporter.get() );
+    m_settingsDlg->SetNetlistExporter( m_exporter.get() );
 
-    if( m_settingsDlg.ShowModal() == wxID_OK )
+    if( m_settingsDlg->ShowModal() == wxID_OK )
     {
-        wxString newCommand = m_settingsDlg.GetSimCommand();
+        wxString newCommand = m_settingsDlg->GetSimCommand();
         SIM_TYPE newSimType = NETLIST_EXPORTER_PSPICE_SIM::CommandToSimType( newCommand );
 
         // If it is a new simulation type, open a new plot
@@ -877,7 +895,7 @@ void SIM_PLOT_FRAME::onAddSignal( wxCommandEvent& event )
 
     if( !plotPanel || !m_exporter || plotPanel->GetType() != m_exporter->GetSimType() )
     {
-        DisplayInfoMessage( this, wxT( "You need to run simulation first." ) );
+        DisplayInfoMessage( this, _( "You need to run simulation first." ) );
         return;
     }
 
@@ -924,7 +942,7 @@ void SIM_PLOT_FRAME::onCursorUpdate( wxCommandEvent& event )
     if( !plotPanel )
         return;
 
-    const long SIGNAL_COL = m_cursors->AppendColumn( wxT( "Signal" ), wxLIST_FORMAT_LEFT, size.x / 2 );
+    const long SIGNAL_COL = m_cursors->AppendColumn( _( "Signal" ), wxLIST_FORMAT_LEFT, size.x / 2 );
     const long X_COL = m_cursors->AppendColumn( plotPanel->GetLabelX(), wxLIST_FORMAT_LEFT, size.x / 4 );
 
     wxString labelY1 = plotPanel->GetLabelY1();
@@ -1015,9 +1033,6 @@ void SIM_PLOT_FRAME::onSimFinished( wxCommandEvent& aEvent )
 
 void SIM_PLOT_FRAME::onSimUpdate( wxCommandEvent& aEvent )
 {
-    if( !m_simulator )
-        return;
-
     if( IsSimulationRunning() )
         StopSimulation();
 
@@ -1051,14 +1066,14 @@ SIM_PLOT_FRAME::SIGNAL_CONTEXT_MENU::SIGNAL_CONTEXT_MENU( const wxString& aSigna
 {
     SIM_PLOT_PANEL* plot = m_plotFrame->CurrentPlot();
 
-    Append( HIDE_SIGNAL, wxT( "Hide signal" ) );
+    Append( HIDE_SIGNAL, _( "Hide signal" ) );
 
     TRACE* trace = plot->GetTrace( m_signal );
 
     if( trace->HasCursor() )
-        Append( HIDE_CURSOR, wxT( "Hide cursor" ) );
+        Append( HIDE_CURSOR, _( "Hide cursor" ) );
     else
-        Append( SHOW_CURSOR, wxT( "Show cursor" ) );
+        Append( SHOW_CURSOR, _( "Show cursor" ) );
 
     Connect( wxEVT_COMMAND_MENU_SELECTED, wxMenuEventHandler( SIGNAL_CONTEXT_MENU::onMenuEvent ), NULL, this );
 }

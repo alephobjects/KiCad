@@ -48,6 +48,7 @@ class SCH_COMPONENT;
 class SPICE_SIMULATOR;
 class NETLIST_EXPORTER_PSPICE_SIM;
 class SIM_PLOT_PANEL;
+class SIM_THREAD_REPORTER;
 class TUNER_SLIDER;
 
 ///> Trace descriptor class
@@ -271,7 +272,8 @@ private:
 
     SCH_EDIT_FRAME* m_schematicFrame;
     std::unique_ptr<NETLIST_EXPORTER_PSPICE_SIM> m_exporter;
-    std::unique_ptr<SPICE_SIMULATOR> m_simulator;
+    SPICE_SIMULATOR* m_simulator;
+    SIM_THREAD_REPORTER* m_reporter;
 
     typedef std::map<wxString, TRACE_DESC> TRACE_MAP;
 
@@ -290,8 +292,11 @@ private:
     ///> List of currently displayed tuners
     std::list<TUNER_SLIDER*> m_tuners;
 
-    // Trick to preserve settings between runs
-    DIALOG_SIM_SETTINGS m_settingsDlg;
+    // Trick to preserve settings between runs:
+    // the DIALOG_SIM_SETTINGS is not destroyed after closing the dialog.
+    // Once created it will be not shown (shown only on request) during a session
+    // and will be destroyed only when closing the simulator frame.
+    DIALOG_SIM_SETTINGS* m_settingsDlg;
 
     // Right click context menu for signals in the listbox
     class SIGNAL_CONTEXT_MENU : public wxMenu
