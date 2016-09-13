@@ -29,6 +29,8 @@
 #include <wxPcbStruct.h>
 #include <confirm.h>
 
+#include <board_commit.h>
+
 DIALOG_TRACK_VIA_PROPERTIES::DIALOG_TRACK_VIA_PROPERTIES( PCB_BASE_FRAME* aParent, const SELECTION& aItems ) :
     DIALOG_TRACK_VIA_PROPERTIES_BASE( aParent ), m_items( aItems ),
     m_trackStartX( aParent, m_TrackStartXCtrl, m_TrackStartXUnit ),
@@ -202,7 +204,7 @@ DIALOG_TRACK_VIA_PROPERTIES::DIALOG_TRACK_VIA_PROPERTIES( PCB_BASE_FRAME* aParen
 }
 
 
-bool DIALOG_TRACK_VIA_PROPERTIES::Apply()
+bool DIALOG_TRACK_VIA_PROPERTIES::Apply( COMMIT& aCommit )
 {
     if( !check() )
         return false;
@@ -214,6 +216,7 @@ bool DIALOG_TRACK_VIA_PROPERTIES::Apply()
     for( int i = 0; i < m_items.Size(); ++i )
     {
         BOARD_ITEM* item = m_items.Item<BOARD_ITEM>( i );
+        aCommit.Modify( item );
 
         switch( item->Type() )
         {
@@ -289,8 +292,23 @@ bool DIALOG_TRACK_VIA_PROPERTIES::Apply()
 
                 if( m_viaNetclass->IsChecked() )
                 {
-                    v->SetWidth( v->GetNetClass()->GetViaDiameter() );
-                    v->SetDrill( v->GetNetClass()->GetViaDrill() );
+                    switch( v->GetViaType() )
+                    {
+                    default:
+                        wxFAIL_MSG("Unhandled via type");
+                        // fall through
+
+                    case VIA_THROUGH:
+                    case VIA_BLIND_BURIED:
+                        v->SetWidth( v->GetNetClass()->GetViaDiameter() );
+                        v->SetDrill( v->GetNetClass()->GetViaDrill() );
+                        break;
+
+                    case VIA_MICROVIA:
+                        v->SetWidth( v->GetNetClass()->GetuViaDiameter() );
+                        v->SetDrill( v->GetNetClass()->GetuViaDrill() );
+                        break;
+                    }
                 }
                 else
                 {

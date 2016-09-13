@@ -428,6 +428,7 @@ SIM_PLOT_PANEL::SIM_PLOT_PANEL( SIM_TYPE aType, wxWindow* parent, wxWindowID id,
     }
 
     m_legend = new mpInfoLegend( wxRect( 0, 40, 200, 40 ), wxTRANSPARENT_BRUSH );
+    m_legend->SetVisible( false );
     AddLayer( m_legend );
     m_topLevel.push_back( m_legend );
     SetColourTheme( *wxBLACK, *wxWHITE, grey );
@@ -490,7 +491,8 @@ bool SIM_PLOT_PANEL::AddTrace( const wxString& aName, int aPoints,
 
         // New entry
         trace = new TRACE( aName );
-        trace->SetPen( wxPen( generateColor(), 2, wxPENSTYLE_SOLID ) );
+        trace->SetTraceColour( generateColor() );
+        trace->SetPen( wxPen( trace->GetTraceColour(), 2, wxPENSTYLE_SOLID ) );
         m_traces[aName] = trace;
 
         // It is a trick to keep legend & coords always on the top

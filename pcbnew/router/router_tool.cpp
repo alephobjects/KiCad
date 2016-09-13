@@ -2,6 +2,7 @@
  * KiRouter - a push-and-(sometimes-)shove PCB router
  *
  * Copyright (C) 2013  CERN
+ * Copyright (C) 2016 KiCad Developers, see AUTHORS.txt for contributors.
  * Author: Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
  *
  * This program is free software: you can redistribute it and/or modify it
@@ -109,7 +110,7 @@ static TOOL_ACTION ACT_SetDpDimensions( "pcbnew.InteractiveRouter.SetDpDimension
 
 
 ROUTER_TOOL::ROUTER_TOOL() :
-    PNS_TOOL_BASE( "pcbnew.InteractiveRouter" )
+    TOOL_BASE( "pcbnew.InteractiveRouter" )
 {
 }
 
@@ -199,7 +200,7 @@ private:
 class ROUTER_TOOL_MENU: public CONTEXT_MENU
 {
 public:
-    ROUTER_TOOL_MENU( BOARD* aBoard, PNS_ROUTER_MODE aMode )
+    ROUTER_TOOL_MENU( BOARD* aBoard, PNS::ROUTER_MODE aMode )
     {
         SetTitle( _( "Interactive Router" ) );
         Add( ACT_NewTrack );
@@ -218,11 +219,11 @@ public:
 
         Add( ACT_CustomTrackWidth );
 
-        if( aMode == PNS_MODE_ROUTE_DIFF_PAIR )
+        if( aMode == PNS::PNS_MODE_ROUTE_DIFF_PAIR )
             Add( ACT_SetDpDimensions );
 
         AppendSeparator();
-        Add( PNS_TOOL_BASE::ACT_RouterOptions );
+        Add( PNS::TOOL_BASE::ACT_RouterOptions );
     }
 
 private:
@@ -244,7 +245,7 @@ bool ROUTER_TOOL::Init()
 
 void ROUTER_TOOL::Reset( RESET_REASON aReason )
 {
-    PNS_TOOL_BASE::Reset( aReason );
+    TOOL_BASE::Reset( aReason );
 
     Go( &ROUTER_TOOL::RouteSingleTrace, COMMON_ACTIONS::routerActivateSingle.MakeEvent() );
     Go( &ROUTER_TOOL::RouteDiffPair, COMMON_ACTIONS::routerActivateDiffPair.MakeEvent() );
@@ -313,7 +314,7 @@ void ROUTER_TOOL::handleCommonEvents( const TOOL_EVENT& aEvent )
     }
     else if( aEvent.IsAction( &ACT_SetDpDimensions ) )
     {
-        PNS_SIZES_SETTINGS sizes = m_router->Sizes();
+        PNS::SIZES_SETTINGS sizes = m_router->Sizes();
         DIALOG_PNS_DIFF_PAIR_DIMENSIONS settingsDlg( m_frame, sizes );
 
         if( settingsDlg.ShowModal() )
@@ -336,20 +337,20 @@ void ROUTER_TOOL::handleCommonEvents( const TOOL_EVENT& aEvent )
     else if( aEvent.IsAction( &COMMON_ACTIONS::trackViaSizeChanged ) )
     {
 
-        PNS_SIZES_SETTINGS sizes( m_router->Sizes() );
+        PNS::SIZES_SETTINGS sizes( m_router->Sizes() );
         sizes.ImportCurrent( m_board->GetDesignSettings() );
         m_router->UpdateSizes( sizes );
     }
 }
 
 
-int ROUTER_TOOL::getStartLayer( const PNS_ITEM* aItem )
+int ROUTER_TOOL::getStartLayer( const PNS::ITEM* aItem )
 {
     int tl = getView()->GetTopLayer();
 
     if( m_startItem )
     {
-        const PNS_LAYERSET& ls = m_startItem->Layers();
+        const LAYER_RANGE& ls = m_startItem->Layers();
 
         if( ls.Overlaps( tl ) )
             return tl;
@@ -390,7 +391,7 @@ bool ROUTER_TOOL::onViaCommand( TOOL_EVENT& aEvent, VIATYPE_T aType )
     LAYER_ID pairTop = m_frame->GetScreen()->m_Route_Layer_TOP;
     LAYER_ID pairBottom = m_frame->GetScreen()->m_Route_Layer_BOTTOM;
 
-    PNS_SIZES_SETTINGS sizes = m_router->Sizes();
+    PNS::SIZES_SETTINGS sizes = m_router->Sizes();
 
     // fixme: P&S supports more than one fixed layer pair. Update the dialog?
     sizes.ClearLayerPairs();
@@ -490,7 +491,7 @@ bool ROUTER_TOOL::prepareInteractive()
 
     // fixme: switch on invisible layer
 
-	// for some reason I don't understand, GetNetclass() may return null sometimes...
+    // for some reason I don't understand, GetNetclass() may return null sometimes...
     if( m_startItem &&
         m_startItem->Net() >= 0 &&
         m_startItem->Parent() &&
@@ -506,7 +507,7 @@ bool ROUTER_TOOL::prepareInteractive()
     m_ctls->ForceCursorPosition( false );
     m_ctls->SetAutoPan( true );
 
-    PNS_SIZES_SETTINGS sizes( m_router->Sizes() );
+    PNS::SIZES_SETTINGS sizes( m_router->Sizes() );
 
     sizes.Init( m_board, m_startItem );
     sizes.AddLayerPair( m_frame->GetScreen()->m_Route_Layer_TOP,
@@ -532,8 +533,6 @@ bool ROUTER_TOOL::prepareInteractive()
 bool ROUTER_TOOL::finishInteractive()
 {
     m_router->StopRouting();
-
-    m_frame->OnModify();
 
     m_ctls->SetAutoPan( false );
     m_ctls->ForceCursorPosition( false );
@@ -618,7 +617,7 @@ int ROUTER_TOOL::DpDimensionsDialog( const TOOL_EVENT& aEvent )
 {
     Activate();
 
-    PNS_SIZES_SETTINGS sizes = m_router->Sizes();
+    PNS::SIZES_SETTINGS sizes = m_router->Sizes();
     DIALOG_PNS_DIFF_PAIR_DIMENSIONS settingsDlg( m_frame, sizes );
 
     if( settingsDlg.ShowModal() )
@@ -648,18 +647,18 @@ int ROUTER_TOOL::SettingsDialog( const TOOL_EVENT& aEvent )
 int ROUTER_TOOL::RouteSingleTrace( const TOOL_EVENT& aEvent )
 {
     m_frame->SetToolID( ID_TRACK_BUTT, wxCURSOR_PENCIL, _( "Route Track" ) );
-    return mainLoop( PNS_MODE_ROUTE_SINGLE );
+    return mainLoop( PNS::PNS_MODE_ROUTE_SINGLE );
 }
 
 
 int ROUTER_TOOL::RouteDiffPair( const TOOL_EVENT& aEvent )
 {
     m_frame->SetToolID( ID_TRACK_BUTT, wxCURSOR_PENCIL, _( "Router Differential Pair" ) );
-    return mainLoop( PNS_MODE_ROUTE_DIFF_PAIR );
+    return mainLoop( PNS::PNS_MODE_ROUTE_DIFF_PAIR );
 }
 
 
-int ROUTER_TOOL::mainLoop( PNS_ROUTER_MODE aMode )
+int ROUTER_TOOL::mainLoop( PNS::ROUTER_MODE aMode )
 {
     PCB_EDIT_FRAME* frame = getEditFrame<PCB_EDIT_FRAME>();
     BOARD* board = getModel<BOARD>();
@@ -739,7 +738,6 @@ int ROUTER_TOOL::mainLoop( PNS_ROUTER_MODE aMode )
 
 void ROUTER_TOOL::performDragging()
 {
-    PCB_EDIT_FRAME* frame = getEditFrame<PCB_EDIT_FRAME>();
     VIEW_CONTROLS* ctls = getViewControls();
 
     if( m_startItem && m_startItem->IsLocked() )
@@ -758,8 +756,6 @@ void ROUTER_TOOL::performDragging()
 
     ctls->SetAutoPan( true );
 
-    bool modified = false;
-
     while( OPT_TOOL_EVENT evt = Wait() )
     {
         ctls->ForceCursorPosition( false );
@@ -774,10 +770,7 @@ void ROUTER_TOOL::performDragging()
         else if( evt->IsClick( BUT_LEFT ) )
         {
             if( m_router->FixRoute( m_endSnapPoint, m_endItem ) )
-            {
-                modified = true;
                 break;
-            }
         }
 
         handleCommonEvents( *evt );
@@ -785,9 +778,6 @@ void ROUTER_TOOL::performDragging()
 
     if( m_router->RoutingInProgress() )
         m_router->StopRouting();
-
-    if( modified )
-        frame->OnModify();
 
     m_startItem = NULL;
 
@@ -828,8 +818,6 @@ int ROUTER_TOOL::InlineDrag( const TOOL_EVENT& aEvent )
     ctls->SetAutoPan( true );
     frame->UndoRedoBlock( true );
 
-    bool modified = false;
-
     while( OPT_TOOL_EVENT evt = Wait() )
     {
         p0 = ctls->GetCursorPosition();
@@ -844,16 +832,13 @@ int ROUTER_TOOL::InlineDrag( const TOOL_EVENT& aEvent )
         }
         else if( evt->IsMouseUp( BUT_LEFT ) || evt->IsClick( BUT_LEFT ) )
         {
-            modified = m_router->FixRoute( p0, NULL );
+            m_router->FixRoute( p0, NULL );
             break;
         }
     }
 
     if( m_router->RoutingInProgress() )
         m_router->StopRouting();
-
-    if( modified )
-        frame->OnModify();
 
     ctls->SetAutoPan( false );
     ctls->ShowCursor( false );
